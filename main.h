@@ -18,10 +18,17 @@ constexpr uint64_t DOUBLE_SPECIAL = DOUBLE_EXPONENT;
 constexpr uint64_t DOUBLE_NEGATIVE_ZERO = DOUBLE_SIGN;
 
 void print(const std::string& message);
-//std::string input();
+// std::string input();
 void print_progress_bar(const double& progress = 0, const double& total = 100);
 void erase_progress_bar();
-void assert(const bool& assertion, const std::string& message, const std::string& filePath, const std::string& function, const std::string& source, const uint32_t& line);
+void assert(
+    const bool& assertion,
+    const std::string& message,
+    const std::string& filePath,
+    const std::string& function,
+    const std::string& source,
+    const uint32_t& line
+);
 std::string byte_to_string(const uint8_t& byte);
 
 class Bytecode;
