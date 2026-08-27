@@ -18,7 +18,7 @@ static struct {
     bool unrestrictedAscii = false;
     std::filesystem::path inputPath;
     std::filesystem::path outputPath;
-    std::string extensionFilter;
+    std::string extensionFilter = ".lua";
 } arguments;
 
 static std::string string_to_lowercase(const std::string& string) {
@@ -144,7 +144,7 @@ int main(int argc, char* argv[]) try {
             "Available options:\n"
             "  -h, -?, --help\t\tShow this message\n"
             "  -o, --output OUTPUT_PATH\tOverride default output directory\n"
-            "  -e, --extension EXTENSION\tOnly decompile files with the specified extension\n"
+            "  -e, --extension EXTENSION\tOnly decompile files with the specified extension (default: .lua)\n"
             "  -f, --force_overwrite\t\tAlways overwrite existing files\n"
             "  -i, --ignore_debug_info\tIgnore bytecode debug info\n"
             "  -m, --minimize_diffs\t\tOptimize output formatting to help minimize diffs\n"
