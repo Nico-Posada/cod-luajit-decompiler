@@ -1,4 +1,4 @@
-#include "..\main.h"
+#include "../main.h"
 
 Bytecode::Prototype::Prototype(const Bytecode& bytecode) : bytecode(bytecode) {}
 
@@ -19,9 +19,15 @@ void Bytecode::Prototype::read_header() {
 	header.parameters = get_next_byte();
 	header.framesize = get_next_byte();
 	upvalues.resize(get_next_byte());
-	constants.resize(get_uleb128());
-	numberConstants.resize(get_uleb128());
-	instructions.resize(get_uleb128());
+	const uint32_t constantsSize = get_uleb128();
+	assert(constantsSize <= bytecode.fileBuffer.size() - prototypeSize, "Prototype constant count exceeds remaining bytes", bytecode.filePath, DEBUG_INFO);
+	constants.resize(constantsSize);
+	const uint32_t numberConstantsSize = get_uleb128();
+	assert(numberConstantsSize <= bytecode.fileBuffer.size() - prototypeSize, "Prototype number constant count exceeds remaining bytes", bytecode.filePath, DEBUG_INFO);
+	numberConstants.resize(numberConstantsSize);
+	const uint32_t instructionsSize = get_uleb128();
+	assert(static_cast<uint64_t>(instructionsSize) * 4 <= bytecode.fileBuffer.size() - prototypeSize, "Prototype instruction count exceeds remaining bytes", bytecode.filePath, DEBUG_INFO);
+	instructions.resize(instructionsSize);
 	assert(instructions.size(), "Prototype has no instructions", bytecode.filePath, DEBUG_INFO);
 	if (bytecode.header.flags & BC_F_STRIP || !get_uleb128()) return;
 	header.hasDebugInfo = !(bytecode.header.flags & BC_F_STRIP_VAR);
@@ -38,8 +44,6 @@ void Bytecode::Prototype::read_instructions() {
 		switch (instructions[i].type) {
 		case BC_OP_ISTYPE:
 		case BC_OP_ISNUM:
-		case BC_OP_UNKNOWN1:
-		case BC_OP_UNKNOWN2:
 		case BC_OP_TGETR:
 		case BC_OP_TSETR:
 		case BC_OP_JFORI:
@@ -93,9 +97,14 @@ void Bytecode::Prototype::read_constants(std::vector<Prototype*>& unlinkedProtot
 			unlinkedPrototypes.pop_back();
 			continue;
 		case BC_KGC_TAB:
+		{
 			constants[i].type = BC_KGC_TAB;
-			constants[i].array.resize(get_uleb128());
-			constants[i].table.resize(get_uleb128());
+			const uint32_t arraySize = get_uleb128();
+			const uint32_t tableSize = get_uleb128();
+			assert(static_cast<uint64_t>(arraySize) + static_cast<uint64_t>(tableSize) * 2 <= bytecode.fileBuffer.size() - prototypeSize,
+				"Prototype table exceeds remaining bytes", bytecode.filePath, DEBUG_INFO);
+			constants[i].array.resize(arraySize);
+			constants[i].table.resize(tableSize);
 
 			for (uint32_t j = 0; j < constants[i].array.size(); j++) {
 				constants[i].array[j] = get_table_constant();
@@ -107,6 +116,7 @@ void Bytecode::Prototype::read_constants(std::vector<Prototype*>& unlinkedProtot
 			}
 
 			continue;
+		}
 		case BC_KGC_COMPLEX:
 			assert(!get_uleb128() && !get_uleb128(), "Prototype has invalid cdata constant", bytecode.filePath, DEBUG_INFO);
 		case BC_KGC_I64:
@@ -117,12 +127,22 @@ void Bytecode::Prototype::read_constants(std::vector<Prototype*>& unlinkedProtot
 			continue;
 		case BC_KGC_HASH:
 			constants[i].type = (BC_KGC)type;
-			constants[i].hash = (uint64_t)get_uleb128() << 32;
-			constants[i].hash |= get_uleb128();
-			if (bytecode.header.version != BC_VERSION_82) constants[i].hashType = get_next_byte();
+
+			if (bytecode.header.version == BC_VERSION_84) {
+				constants[i].hashType = get_next_byte();
+				if (!(constants[i].hashType & 0x80)) constants[i].hash = get_uint64();
+				constants[i].hashType &= 0x7F;
+			} else {
+				constants[i].hash = (uint64_t)get_uleb128() << 32;
+				constants[i].hash |= get_uleb128();
+				if (bytecode.header.version != BC_VERSION_82) constants[i].hashType = get_next_byte();
+			}
+
 			continue;
 		default:
 			constants[i].type = BC_KGC_STR;
+			assert(type - BC_KGC_STR <= bytecode.fileBuffer.size() - prototypeSize,
+				"Prototype string exceeds remaining bytes", bytecode.filePath, DEBUG_INFO);
 			constants[i].string.resize(type - BC_KGC_STR);
 
 			for (uint32_t j = 0; j < constants[i].string.size(); j++) {
@@ -220,6 +240,7 @@ uint32_t Bytecode::Prototype::get_uleb128() {
 
 		do {
 			bitShift += 7;
+			assert(bitShift < 32, "ULEB128 value is too large", bytecode.filePath, DEBUG_INFO);
 			byte = get_next_byte();
 			uleb128 |= (uint32_t)(byte & 0x7F) << bitShift;
 		} while (byte >= 0x80);
@@ -238,12 +259,23 @@ uint32_t Bytecode::Prototype::get_uleb128_33() {
 
 		do {
 			bitShift += 7;
+			assert(bitShift < 32, "ULEB128 value is too large", bytecode.filePath, DEBUG_INFO);
 			byte = get_next_byte();
 			uleb128_33 |= (uint32_t)(byte & 0x7F) << bitShift;
 		} while (byte >= 0x80);
 	}
 
 	return uleb128_33;
+}
+
+uint64_t Bytecode::Prototype::get_uint64() {
+	uint64_t value = 0;
+
+	for (uint8_t i = 0; i < sizeof(value); i++) {
+		value |= static_cast<uint64_t>(get_next_byte()) << i * 8;
+	}
+
+	return value;
 }
 
 std::string Bytecode::Prototype::get_string() {
@@ -277,13 +309,23 @@ Bytecode::TableConstant Bytecode::Prototype::get_table_constant() {
 		break;
 	case BC_KTAB_HASH:
 		tableConstant.type = BC_KTAB_HASH;
-		tableConstant.hash = (uint64_t)get_uleb128() << 32;
-		tableConstant.hash |= get_uleb128();
-		if (bytecode.header.version != BC_VERSION_82) tableConstant.hashType = get_next_byte();
+
+		if (bytecode.header.version == BC_VERSION_84) {
+			tableConstant.hashType = get_next_byte();
+			if (!(tableConstant.hashType & 0x80)) tableConstant.hash = get_uint64();
+			tableConstant.hashType &= 0x7F;
+		} else {
+			tableConstant.hash = (uint64_t)get_uleb128() << 32;
+			tableConstant.hash |= get_uleb128();
+			if (bytecode.header.version != BC_VERSION_82) tableConstant.hashType = get_next_byte();
+		}
+
 		break;
 	default:
 		tableConstant.type = BC_KTAB_STR;
-		tableConstant.string.resize(type - BC_KGC_STR);
+		assert(type - BC_KTAB_STR <= bytecode.fileBuffer.size() - prototypeSize,
+			"Prototype table string exceeds remaining bytes", bytecode.filePath, DEBUG_INFO);
+		tableConstant.string.resize(type - BC_KTAB_STR);
 
 		for (uint32_t i = 0; i < tableConstant.string.size(); i++) {
 			tableConstant.string[i] = get_next_byte();

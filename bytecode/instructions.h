@@ -58,8 +58,8 @@ enum BC_OP {
 	BC_OP_TDUP, // A<DST> = D<TAB>
 	BC_OP_GGET, // A<DST> = _G.D<STR>
 	BC_OP_GSET, // _G.D<STR> = A<VAR>
-	BC_OP_UNKNOWN1, // unsupported
-	BC_OP_UNKNOWN2, // unsupported
+	BC_OP_HGGET, // A<DST> = _G[D<HASH>]
+	BC_OP_HGSET, // _G[D<HASH>] = A<VAR>
 	BC_OP_TGETV, // A<DST> = B<VAR>[C<VAR>]
 	BC_OP_TGETS, // A<DST> = B<VAR>[C<STR>]
 	BC_OP_TGETB, // A<DST> = B<VAR>[C<LIT>]
@@ -104,7 +104,7 @@ enum BC_OP {
 	BC_OP_INVALID
 };
 
-struct Bytecode::Instruction {
+struct Instruction {
 	BC_OP type;
 	uint8_t a = 0;
 	uint8_t b = 0;
@@ -113,7 +113,7 @@ struct Bytecode::Instruction {
 };
 
 static BC_OP get_op_type(const uint8_t& byte, const uint8_t& version) {
-	return (BC_OP)(version != Bytecode::BC_VERSION_84 && byte >= BC_OP_UNKNOWN1 ? byte + 2 : byte);
+	return (BC_OP)(version != Bytecode::BC_VERSION_84 && byte >= BC_OP_HGGET ? byte + 2 : byte);
 }
 
 static bool is_op_abc_format(const BC_OP& instruction) {

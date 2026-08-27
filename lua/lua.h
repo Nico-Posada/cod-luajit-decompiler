@@ -2,7 +2,6 @@ class Lua {
 public:
 
 	Lua(const Bytecode& bytecode, const Ast& ast, const std::string& filePath, const bool& forceOverwrite, const bool& minimizeDiffs, const bool& unrestrictedAscii);
-	~Lua();
 
 	void operator()();
 
@@ -29,8 +28,6 @@ private:
 	template <typename... Strings>
 	void write(const std::string& string, const Strings&... strings);
 	void write_indent();
-	void create_file();
-	void close_file();
 	void write_file();
 
 	const Bytecode& bytecode;
@@ -38,7 +35,6 @@ private:
 	const bool forceOverwrite;
 	const bool minimizeDiffs;
 	const bool unrestrictedAscii;
-	HANDLE file = INVALID_HANDLE_VALUE;
 	std::string writeBuffer;
 	uint32_t indentLevel = 0;
 	uint64_t prototypeDataLeft = 0;

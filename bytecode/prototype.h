@@ -1,4 +1,4 @@
-class Bytecode::Prototype {
+class Prototype {
 public:
 
 	Prototype(const Bytecode& bytecode);
@@ -35,6 +35,7 @@ private:
 	uint8_t get_next_byte();
 	uint32_t get_uleb128();
 	uint32_t get_uleb128_33();
+	uint64_t get_uint64();
 	std::string get_string();
 	TableConstant get_table_constant();
 

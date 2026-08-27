@@ -1,4 +1,4 @@
-#include "..\main.h"
+#include "../main.h"
 
 Ast::Ast(const Bytecode& bytecode, const bool& ignoreDebugInfo, const bool& minimizeDiffs) : bytecode(bytecode), ignoreDebugInfo(ignoreDebugInfo), minimizeDiffs(minimizeDiffs) {}
 
@@ -657,11 +657,29 @@ void Ast::build_expressions(Function& function, std::vector<Statement*>& block) 
 				block[i]->assignment.expressions.back()->variable->name = function.get_constant(block[i]->instruction.d).string;
 				if (function.hasDebugInfo) function.usedGlobals.emplace_back(&function.get_constant(block[i]->instruction.d).string);
 				break;
+			case Bytecode::BC_OP_HGGET:
+				block[i]->assignment.expressions.back() = new_expression(AST_EXPRESSION_VARIABLE);
+				block[i]->assignment.expressions.back()->variable->type = AST_VARIABLE_TABLE_INDEX;
+				block[i]->assignment.expressions.back()->variable->table = new_expression(AST_EXPRESSION_VARIABLE);
+				block[i]->assignment.expressions.back()->variable->table->variable->type = AST_VARIABLE_GLOBAL;
+				block[i]->assignment.expressions.back()->variable->table->variable->name = "_G";
+				block[i]->assignment.expressions.back()->variable->tableIndex = new_hash(function, block[i]->instruction.d);
+				break;
 			case Bytecode::BC_OP_GSET:
 				block[i]->assignment.variables.resize(1);
 				block[i]->assignment.variables.back().type = AST_VARIABLE_GLOBAL;
 				block[i]->assignment.variables.back().name = function.get_constant(block[i]->instruction.d).string;
 				if (function.hasDebugInfo) function.usedGlobals.emplace_back(&function.get_constant(block[i]->instruction.d).string);
+				block[i]->assignment.expressions.back() = new_slot(block[i]->instruction.a);
+				block[i]->assignment.register_slots(block[i]->assignment.expressions.back());
+				continue;
+			case Bytecode::BC_OP_HGSET:
+				block[i]->assignment.variables.resize(1);
+				block[i]->assignment.variables.back().type = AST_VARIABLE_TABLE_INDEX;
+				block[i]->assignment.variables.back().table = new_expression(AST_EXPRESSION_VARIABLE);
+				block[i]->assignment.variables.back().table->variable->type = AST_VARIABLE_GLOBAL;
+				block[i]->assignment.variables.back().table->variable->name = "_G";
+				block[i]->assignment.variables.back().tableIndex = new_hash(function, block[i]->instruction.d);
 				block[i]->assignment.expressions.back() = new_slot(block[i]->instruction.a);
 				block[i]->assignment.register_slots(block[i]->assignment.expressions.back());
 				continue;
@@ -1982,6 +2000,34 @@ void Ast::eliminate_slots(Function& function, std::vector<Statement*>& block, Bl
 
 					break;
 				case AST_VARIABLE_TABLE_INDEX:
+					if (block[i]->assignment.variables.back().isMultres && i) {
+						index = INVALID_ID;
+
+						for (uint32_t j = i; j--;) {
+							if (block[j]->type == AST_STATEMENT_ASSIGNMENT
+								&& block[j]->assignment.variables.size() == 1
+								&& block[j]->assignment.variables.back().type == AST_VARIABLE_SLOT
+								&& block[j]->assignment.variables.back().slot == block[i]->assignment.variables.back().table->variable->slot) {
+								if (block[j]->assignment.isTableConstructor) index = j;
+								break;
+							}
+
+							if (function.is_valid_label(block[j]->instruction.label)) break;
+						}
+
+						if (index != INVALID_ID) {
+							// TSETM completes its TNEW after evaluating the constructor's multires tail.
+							assert(!block[index]->assignment.expressions.back()->table->multresField,
+								"Table constructor has multiple multres fields", bytecode.filePath, DEBUG_INFO);
+							block[index]->assignment.expressions.back()->table->multresIndex = block[i]->assignment.variables.back().multresIndex;
+							block[index]->assignment.expressions.back()->table->multresField = block[i]->assignment.expressions.back();
+							(*block[index]->assignment.variables.back().slotScope)->usages--;
+							block.erase(block.begin() + i);
+							i = index - 1;
+							continue;
+						}
+					}
+
 					if (i
 						&& !function.is_valid_label(block[i]->instruction.label)
 						&& block[i - 1]->type == AST_STATEMENT_ASSIGNMENT
@@ -2039,6 +2085,32 @@ void Ast::eliminate_slots(Function& function, std::vector<Statement*>& block, Bl
 
 			break;
 		}
+	}
+}
+
+void Ast::lower_test_copy_conditions(std::vector<Statement*>& block) {
+	for (Statement* statement : block) {
+		if (statement->type != AST_STATEMENT_CONDITION || !statement->assignment.variables.size()) continue;
+
+		Statement* const assignment = new_statement(AST_STATEMENT_ASSIGNMENT);
+		assignment->assignment.variables.swap(statement->assignment.variables);
+		assignment->assignment.expressions.emplace_back(statement->assignment.expressions.back());
+
+		if (statement->instruction.type == Bytecode::BC_OP_ISFC) {
+			Expression* const condition = new_expression(AST_EXPRESSION_UNARY_OPERATION);
+			condition->unaryOperation->type = AST_UNARY_NOT;
+			condition->unaryOperation->operand = statement->assignment.expressions.back();
+			statement->assignment.expressions.back() = condition;
+		}
+
+		Statement* const jump = new_statement(AST_STATEMENT_GOTO);
+		jump->instruction.type = Bytecode::BC_OP_JMP;
+		jump->instruction.id = statement->instruction.id + 1;
+		jump->instruction.target = statement->instruction.target;
+
+		statement->type = AST_STATEMENT_IF;
+		statement->block.emplace_back(assignment);
+		statement->block.emplace_back(jump);
 	}
 }
 
@@ -2388,6 +2460,8 @@ void Ast::eliminate_conditions(Function& function, std::vector<Statement*>& bloc
 		block.erase(block.begin() + index, block.begin() + i);
 		i = index;
 	}
+
+	lower_test_copy_conditions(block);
 
 	for (uint32_t i = block.size(); i--;) {
 		switch (block[i]->type) {
@@ -2910,7 +2984,19 @@ void Ast::build_if_statements(Function& function, std::vector<Statement*>& block
 				targetLabel = INVALID_ID;
 			}
 
-			assert(targetLabel != INVALID_ID, "Failed to build if statement", bytecode.filePath, DEBUG_INFO);
+			if (targetLabel == INVALID_ID) {
+				Expression* const condition = new_expression(AST_EXPRESSION_UNARY_OPERATION);
+				condition->unaryOperation->type = AST_UNARY_NOT;
+				condition->unaryOperation->operand = block[i]->assignment.expressions.back();
+				block[i]->assignment.expressions.back() = condition;
+
+				Statement* const jump = new_statement(AST_STATEMENT_GOTO);
+				jump->instruction.type = Bytecode::BC_OP_JMP;
+				jump->instruction.id = block[i]->instruction.id + 1;
+				jump->instruction.target = block[i]->instruction.target;
+				block[i]->block.emplace_back(jump);
+				continue;
+			}
 			block[i]->block.reserve(index - i);
 			block[i]->block.insert(block[i]->block.begin(), block.begin() + i + 1, block.begin() + index + 1);
 			block.erase(block.begin() + i + 1, block.begin() + index + 1);

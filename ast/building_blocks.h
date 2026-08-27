@@ -9,7 +9,7 @@ enum AST_EXPRESSION {
 	AST_EXPRESSION_UNARY_OPERATION
 };
 
-struct Ast::Expression {
+struct Expression {
 	Expression(const AST_EXPRESSION& type) {
 		set_type(type);
 	}
@@ -105,19 +105,16 @@ enum AST_CONSTANT {
 	AST_CONSTANT_STRING
 };
 
-struct Ast::Constant {
+struct Constant {
 	AST_CONSTANT type;
 
 	union {
 		double number;
 		int64_t signed_integer;
 		uint64_t unsigned_integer = 0;
-
-		struct {
-			uint64_t hash;
-			uint8_t hashType;
-		};
 	};
+	uint64_t hash = 0;
+	uint8_t hashType = 0;
 
 	std::string string;
 	bool isName = false;
@@ -130,7 +127,7 @@ enum AST_VARIABLE {
 	AST_VARIABLE_TABLE_INDEX
 };
 
-struct Ast::Variable {
+struct Variable {
 	AST_VARIABLE type;
 	uint8_t slot = 0;
 	SlotScope** slotScope = nullptr;
@@ -141,7 +138,7 @@ struct Ast::Variable {
 	uint32_t multresIndex = 0;
 };
 
-struct Ast::FunctionCall {
+struct FunctionCall {
 	Expression* function = nullptr;
 	std::vector<Expression*> arguments;
 	Expression* multresArgument = nullptr;
@@ -149,7 +146,7 @@ struct Ast::FunctionCall {
 	uint8_t returnCount = 0;
 };
 
-struct Ast::Table {
+struct Table {
 	struct Field {
 		Expression* key = nullptr;
 		Expression* value = nullptr;
@@ -183,7 +180,7 @@ enum AST_BINARY_OPERATION {
 	AST_BINARY_OR
 };
 
-struct Ast::BinaryOperation {
+struct BinaryOperation {
 	AST_BINARY_OPERATION type;
 	Expression* leftOperand = nullptr;
 	Expression* rightOperand = nullptr;
@@ -195,7 +192,7 @@ enum AST_UNARY_OPERATION {
 	AST_UNARY_LENGTH
 };
 
-struct Ast::UnaryOperation {
+struct UnaryOperation {
 	AST_UNARY_OPERATION type;
 	Expression* operand = nullptr;
 };
@@ -221,7 +218,7 @@ enum AST_STATEMENT {
 	AST_STATEMENT_LABEL
 };
 
-struct Ast::Statement {
+struct Statement {
 	Statement(const AST_STATEMENT& type) : type(type) {}
 
 	AST_STATEMENT type;

@@ -1,11 +1,7 @@
-#include "..\main.h"
+#include "../main.h"
 
 Lua::Lua(const Bytecode& bytecode, const Ast& ast, const std::string& filePath, const bool& forceOverwrite, const bool& minimizeDiffs, const bool& unrestrictedAscii)
 	: bytecode(bytecode), ast(ast), filePath(filePath), forceOverwrite(forceOverwrite), minimizeDiffs(minimizeDiffs), unrestrictedAscii(unrestrictedAscii) {}
-
-Lua::~Lua() {
-	close_file();
-}
 
 void Lua::operator()() {
 	print_progress_bar();
@@ -14,9 +10,7 @@ void Lua::operator()() {
 	if (ast.chunk->block.size()) write_block(*ast.chunk, ast.chunk->block);
 	prototypeDataLeft -= ast.chunk->prototype.prototypeSize;
 	print_progress_bar(bytecode.prototypesTotalSize - prototypeDataLeft, bytecode.prototypesTotalSize);
-	create_file();
 	write_file();
-	close_file();
 	erase_progress_bar();
 }
 
@@ -355,13 +349,9 @@ void Lua::write_expression(const Ast::Expression& expression, const bool& usePar
 			break;
 		case Ast::AST_CONSTANT_HASH:
 			if (bytecode.header.version == Bytecode::BC_VERSION_82) {
-				std::string string(20, '\0');
-				std::snprintf(string.data(), string.size() + 1, "x64:%.16llX", expression.constant->hash);
-				write(string);
+				write(std::format("x64:{:016X}", expression.constant->hash));
 			} else {
-				std::string string(23, '\0');
-				std::snprintf(string.data(), string.size() + 1, "x64:%.2hhX:%.16llX", expression.constant->hashType, expression.constant->hash);
-				write(string);
+				write(std::format("x64:{:02X}:{:016X}", static_cast<unsigned>(expression.constant->hashType), expression.constant->hash));
 			}
 
 			break;
@@ -806,7 +796,7 @@ void Lua::write_function_definition(const Ast::Function& function, const bool& i
 	if (function.isVariadic) write("...");
 	write(")", NEW_LINE);
 	indentLevel++;
-#if defined _DEBUG
+#ifndef NDEBUG
 	write_indent();
 	write("-- function ", std::to_string(function.id), NEW_LINE);
 #endif
@@ -840,17 +830,13 @@ void Lua::write_number(const double& number) {
 		return;
 	}
 
-	std::string string;
-	string.resize(std::snprintf(nullptr, 0, "%1.15g", number));
-	std::snprintf(string.data(), string.size() + 1, "%1.15g", number);
+	std::string string = std::format("{:.15g}", number);
 
 	if (!try_string_to_number(string, number)) {
-		string.resize(std::snprintf(nullptr, 0, "%1.16g", number));
-		std::snprintf(string.data(), string.size() + 1, "%1.16g", number);
+		string = std::format("{:.16g}", number);
 
 		if (!try_string_to_number(string, number)) {
-			string.resize(std::snprintf(nullptr, 0, "%1.17g", number));
-			std::snprintf(string.data(), string.size() + 1, "%1.17g", number);
+			string = std::format("{:.17g}", number);
 			assert(try_string_to_number(string, number), "Failed to convert number to valid string", filePath, DEBUG_INFO);
 		}
 	}
@@ -863,15 +849,16 @@ void Lua::write_string(const std::string& string) {
 	uint32_t value;
 	uint8_t digit;
 
-	for (uint32_t i = 0; i < string.size(); i++) {
-		value = string[i];
+	for (std::size_t i = 0; i < string.size(); i++) {
+		const uint8_t byte = static_cast<uint8_t>(string[i]);
+		value = byte;
 
 		if (unrestrictedAscii || !(value & 0x80)) {
-			if ((string[i] >= ' '
-					&& string[i] <= '~')
+			if ((byte >= ' '
+					&& byte <= '~')
 				|| (unrestrictedAscii
-					&& string[i] >= 0x80)) {
-				switch (string[i]) {
+					&& byte >= 0x80)) {
+				switch (byte) {
 				case '"':
 				case '\\':
 					writeBuffer += '\\';
@@ -881,7 +868,7 @@ void Lua::write_string(const std::string& string) {
 				continue;
 			}
 
-			switch (string[i]) {
+			switch (byte) {
 			case '\a':
 				write("\\a");
 				continue;
@@ -906,8 +893,8 @@ void Lua::write_string(const std::string& string) {
 			}
 		} else if ((value & 0xE0) == 0xC0) {
 			if (i + 1 < string.size()) {
-				value <<= 8;
-				value |= string[i + 1];
+				value = static_cast<uint32_t>(byte) << 8;
+				value |= static_cast<uint8_t>(string[i + 1]);
 
 				if ((value & 0xC0) == 0x80
 					&& value >= 0xC2A0
@@ -920,9 +907,9 @@ void Lua::write_string(const std::string& string) {
 			}
 		} else if ((value & 0xF0) == 0xE0) {
 			if (i + 2 < string.size()) {
-				value <<= 16;
-				value |= (uint16_t)string[i + 1] << 8;
-				value |= string[i + 2];
+				value = static_cast<uint32_t>(byte) << 16;
+				value |= static_cast<uint32_t>(static_cast<uint8_t>(string[i + 1])) << 8;
+				value |= static_cast<uint8_t>(string[i + 2]);
 
 				if ((value & 0xC0C0) == 0x8080
 					&& ((value >= 0xE0A080
@@ -938,10 +925,10 @@ void Lua::write_string(const std::string& string) {
 			}
 		} else if ((value & 0xF8) == 0xF0) {
 			if (i + 3 < string.size()) {
-				value <<= 24;
-				value |= (uint32_t)string[i + 1] << 16;
-				value |= (uint16_t)string[i + 2] << 8;
-				value |= string[i + 3];
+				value = static_cast<uint32_t>(byte) << 24;
+				value |= static_cast<uint32_t>(static_cast<uint8_t>(string[i + 1])) << 16;
+				value |= static_cast<uint32_t>(static_cast<uint8_t>(string[i + 2])) << 8;
+				value |= static_cast<uint8_t>(string[i + 3]);
 
 				if ((value & 0xC0C0C0) == 0x808080
 					&& value >= 0xF0908080
@@ -957,7 +944,7 @@ void Lua::write_string(const std::string& string) {
 		}
 
 		for (uint8_t j = 2; j--;) {
-			digit = (string[i] >> j * 4) & 0xF;
+			digit = (byte >> j * 4) & 0xF;
 			escapeSequence[3 - j] = digit >= 0xA ? 'A' + digit - 0xA : '0' + digit;
 		}
 
@@ -1013,31 +1000,12 @@ void Lua::write_indent() {
 	return write(std::string(indentLevel, '\t'));
 }
 
-void Lua::create_file() {
-#ifndef _DEBUG
-	if (!forceOverwrite) {
-		file = CreateFileA(filePath.c_str(), GENERIC_READ, NULL, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-		if (file != INVALID_HANDLE_VALUE) {
-			close_file();
-			assert(MessageBoxA(NULL, ("The file " + filePath + " already exists.\n\nDo you want to overwrite it?").c_str(), PROGRAM_NAME, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) == IDYES,
-				"File already exists", filePath, DEBUG_INFO);
-		}
-	}
-#endif
-	file = CreateFileA(filePath.c_str(), GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-	assert(file != INVALID_HANDLE_VALUE, "Unable to create file", filePath, DEBUG_INFO);
-}
-
-void Lua::close_file() {
-	if (file == INVALID_HANDLE_VALUE) return;
-	CloseHandle(file);
-	file = INVALID_HANDLE_VALUE;
-}
-
 void Lua::write_file() {
-	DWORD charsWritten = 0;
-	assert(WriteFile(file, writeBuffer.data(), writeBuffer.size(), &charsWritten, NULL) && !(writeBuffer.size() - charsWritten), "Failed writing to file", filePath, DEBUG_INFO);
+	assert(forceOverwrite || !std::filesystem::exists(filePath), "File already exists", filePath, DEBUG_INFO);
+	std::ofstream file(filePath, std::ios::binary | std::ios::trunc);
+	assert(file.is_open(), "Unable to create file", filePath, DEBUG_INFO);
+	file.write(writeBuffer.data(), static_cast<std::streamsize>(writeBuffer.size()));
+	assert(file.good(), "Failed writing to file", filePath, DEBUG_INFO);
 	writeBuffer.clear();
 	writeBuffer.shrink_to_fit();
 }

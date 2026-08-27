@@ -10,11 +10,11 @@ private:
 		NUMBER_CONSTANT
 	};
 
-	struct Local;
-	struct SlotScope;
 	struct ConditionBuilder;
 
 public:
+	struct Local;
+	struct SlotScope;
 	struct Expression;
 	struct Constant;
 	struct Variable;
@@ -35,8 +35,7 @@ public:
 	Function* chunk = nullptr;
 
 private:
-
-	#include "conditionBuilder.h";
+	#include "conditionBuilder.h"
 
 	struct BlockInfo {
 		uint32_t index = INVALID_ID;
@@ -56,6 +55,7 @@ private:
 	void build_expressions(Function& function, std::vector<Statement*>& block);
 	void build_slot_scopes(Function& function, std::vector<Statement*>& block, BlockInfo* const& previousBlock);
 	void eliminate_slots(Function& function, std::vector<Statement*>& block, BlockInfo* const& previousBlock);
+	void lower_test_copy_conditions(std::vector<Statement*>& block);
 	void eliminate_conditions(Function& function, std::vector<Statement*>& block, BlockInfo* const& previousBlock);
 	void build_multi_assignment(Function& function, std::vector<Statement*>& block);
 	void build_if_statements_from_map(Function& function, std::vector<Statement*>& block, BlockInfo* const& previousBlock, std::unordered_map<Statement*, uint32_t>& offsetMap);
