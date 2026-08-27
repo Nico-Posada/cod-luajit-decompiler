@@ -114,7 +114,7 @@ struct Constant {
         uint64_t unsigned_integer = 0;
     };
     uint64_t hash = 0;
-    uint8_t hashType = 0;
+    Bytecode::XHashType hashType = Bytecode::XHASH_LUA;
 
     std::string string;
     bool isName = false;

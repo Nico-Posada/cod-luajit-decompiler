@@ -13,6 +13,15 @@ static constexpr uint8_t BC_PROTO_FFI = 0x04;
 static constexpr uint16_t BC_UV_IMMUTABLE = 0x4000;
 static constexpr uint16_t BC_UV_LOCAL = 0x8000;
 
+enum XHashType : int8_t {
+    XHASH_LUA = 0,   // #x0 (@x)
+    XHASH_DVAR = 1,  // #x3 (@d)
+    XHASH_SCR = 2,   // #S (@s)
+    XHASH_ASSET = 3, // #x4 (@a)
+    XHASH_32 = 4,    // (@x32)
+    XHASH_OMNVAR = 5 // (@o)
+};
+
 enum BC_KTAB {
     BC_KTAB_NIL,   // primitive nil
     BC_KTAB_FALSE, // primitive false
@@ -31,7 +40,7 @@ struct TableConstant {
         uint64_t number = 0;
     };
     uint64_t hash = 0;
-    uint8_t hashType = 0;
+    XHashType hashType = XHASH_LUA;
 
     std::string string;
 };
@@ -59,7 +68,7 @@ struct Constant {
 
     uint64_t cdata = 0;
     uint64_t hash = 0;
-    uint8_t hashType = 0;
+    XHashType hashType = XHASH_LUA;
 
     std::string string;
 };

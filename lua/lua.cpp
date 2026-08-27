@@ -377,20 +377,42 @@ void Lua::write_expression(const Ast::Expression& expression, const bool& usePar
                     write_number(expression.constant->number);
                     write("i");
                     break;
-                case Ast::AST_CONSTANT_HASH:
-                    if (bytecode.header.version == Bytecode::BC_VERSION_82) {
-                        write(std::format("x64:{:016X}", expression.constant->hash));
-                    } else {
-                        write(
-                            std::format(
-                                "x64:{:02X}:{:016X}",
-                                static_cast<unsigned>(expression.constant->hashType),
-                                expression.constant->hash
-                            )
-                        );
+                case Ast::AST_CONSTANT_HASH: {
+                    const char* hashPrefix = nullptr;
+                    switch (expression.constant->hashType) {
+                        case Bytecode::XHASH_LUA:
+                            hashPrefix = "@x";
+                            break;
+                        case Bytecode::XHASH_DVAR:
+                            hashPrefix = "@d";
+                            break;
+                        case Bytecode::XHASH_SCR:
+                            hashPrefix = "@s";
+                            break;
+                        case Bytecode::XHASH_ASSET:
+                            hashPrefix = "@a";
+                            break;
+                        case Bytecode::XHASH_32:
+                            hashPrefix = "@x32";
+                            break;
+                        case Bytecode::XHASH_OMNVAR:
+                            hashPrefix = "@o";
+                            break;
+                        default:
+                            break;
                     }
 
+                    if (hashPrefix) {
+                        if (expression.constant->hashType == Bytecode::XHASH_32)
+                            write(
+                                hashPrefix,
+                                std::format("\"0x{:08X}\"", static_cast<uint32_t>(expression.constant->hash))
+                            );
+                        else
+                            write(hashPrefix, std::format("\"0x{:016X}\"", expression.constant->hash));
+                    }
                     break;
+                }
                 case Ast::AST_CONSTANT_STRING:
                     write("\"");
                     write_string(expression.constant->string);

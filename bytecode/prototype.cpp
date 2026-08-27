@@ -172,15 +172,17 @@ void Bytecode::Prototype::read_constants(std::vector<Prototype*>& unlinkedProtot
                 constants[i].type = (BC_KGC)type;
 
                 if (bytecode.header.version == BC_VERSION_84) {
-                    constants[i].hashType = get_next_byte();
-                    if (!(constants[i].hashType & 0x80))
+                    const uint8_t encodedHashType = get_next_byte();
+                    if (!(encodedHashType & 0x80))
                         constants[i].hash = get_uint64();
-                    constants[i].hashType &= 0x7F;
+                    constants[i].hashType = static_cast<XHashType>(encodedHashType & 0x7F);
                 } else {
                     constants[i].hash = (uint64_t)get_uleb128() << 32;
                     constants[i].hash |= get_uleb128();
-                    if (bytecode.header.version != BC_VERSION_82)
-                        constants[i].hashType = get_next_byte();
+                    if (bytecode.header.version != BC_VERSION_82) {
+                        const uint8_t encodedHashType = get_next_byte();
+                        constants[i].hashType = static_cast<XHashType>(encodedHashType);
+                    }
                 }
 
                 continue;
@@ -372,15 +374,17 @@ Bytecode::TableConstant Bytecode::Prototype::get_table_constant() {
             tableConstant.type = BC_KTAB_HASH;
 
             if (bytecode.header.version == BC_VERSION_84) {
-                tableConstant.hashType = get_next_byte();
-                if (!(tableConstant.hashType & 0x80))
+                const uint8_t encodedHashType = get_next_byte();
+                if (!(encodedHashType & 0x80))
                     tableConstant.hash = get_uint64();
-                tableConstant.hashType &= 0x7F;
+                tableConstant.hashType = static_cast<XHashType>(encodedHashType & 0x7F);
             } else {
                 tableConstant.hash = (uint64_t)get_uleb128() << 32;
                 tableConstant.hash |= get_uleb128();
-                if (bytecode.header.version != BC_VERSION_82)
-                    tableConstant.hashType = get_next_byte();
+                if (bytecode.header.version != BC_VERSION_82) {
+                    const uint8_t encodedHashType = get_next_byte();
+                    tableConstant.hashType = static_cast<XHashType>(encodedHashType);
+                }
             }
 
             break;
