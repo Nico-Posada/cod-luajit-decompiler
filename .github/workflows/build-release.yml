@@ -19,9 +19,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-24.04
+            compiler_args: -DCMAKE_CXX_COMPILER=g++-14
             binary: luajit-decompiler-v2
             asset: luajit-decompiler-v2-linux-x86_64
           - os: windows-2025
+            compiler_args: ""
             binary: luajit-decompiler-v2.exe
             asset: luajit-decompiler-v2-windows-x86_64.exe
 
@@ -31,7 +33,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.compiler_args }}
 
       - name: Build
         run: cmake --build build --config Release --parallel
