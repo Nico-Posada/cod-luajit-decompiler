@@ -84,10 +84,15 @@ static bool decompile_file(const std::filesystem::path& inputFile, const std::fi
         return true;
     } catch (const Error& error) {
         erase_progress_bar();
-        std::cerr << "\nError running " << error.function << "\nSource: " << error.source << ':' << error.line
-                  << "\n\nFile: " << error.filePath << "\n\n"
-                  << error.message << '\n'
-                  << std::flush;
+        std::println(
+            stderr,
+            "\nError running {}\nSource: {}:{}\n\nFile: {}\n\n{}",
+            error.function,
+            error.source,
+            error.line,
+            error.filePath,
+            error.message
+        );
         return false;
     }
 }
@@ -128,7 +133,7 @@ static const char* parse_arguments(const int argc, char* const argv[]) {
 
 int main(int argc, char* argv[]) try {
     if (const char* invalid = parse_arguments(argc, argv)) {
-        std::cerr << "Invalid argument: " << invalid << "\nUse -? to show usage and options.\n";
+        std::println(stderr, "Invalid argument: {}\nUse -? to show usage and options.", invalid);
         return EXIT_FAILURE;
     }
 
@@ -149,7 +154,7 @@ int main(int argc, char* argv[]) try {
     }
 
     if (arguments.inputPath.empty()) {
-        std::cerr << "No input path specified!\n";
+        std::println(stderr, "No input path specified!");
         return EXIT_FAILURE;
     }
 
@@ -162,14 +167,14 @@ int main(int argc, char* argv[]) try {
     const std::filesystem::path inputPath = std::filesystem::absolute(arguments.inputPath).lexically_normal();
 
     if (!std::filesystem::exists(inputPath)) {
-        std::cerr << "Failed to open input path: " << inputPath.string() << '\n';
+        std::println(stderr, "Failed to open input path: {}", inputPath.string());
         return EXIT_FAILURE;
     }
 
     const bool inputIsDirectory = std::filesystem::is_directory(inputPath);
 
     if (!inputIsDirectory && !std::filesystem::is_regular_file(inputPath)) {
-        std::cerr << "Input path is not a file or directory: " << inputPath.string() << '\n';
+        std::println(stderr, "Input path is not a file or directory: {}", inputPath.string());
         return EXIT_FAILURE;
     }
 
@@ -181,7 +186,7 @@ int main(int argc, char* argv[]) try {
             .lexically_normal();
 
     if (std::filesystem::exists(outputPath) && !std::filesystem::is_directory(outputPath)) {
-        std::cerr << "Output path is not a folder: " << outputPath.string() << '\n';
+        std::println(stderr, "Output path is not a folder: {}", outputPath.string());
         return EXIT_FAILURE;
     }
 
@@ -189,9 +194,12 @@ int main(int argc, char* argv[]) try {
     const std::vector<std::filesystem::path> inputFiles = find_input_files(inputPath, outputPath);
 
     if (inputFiles.empty()) {
-        std::cerr << "No files "
-                  << (arguments.extensionFilter.empty() ? "" : "with extension " + arguments.extensionFilter + " ")
-                  << "found in path: " << inputPath.string() << '\n';
+        std::println(
+            stderr,
+            "No files {}found in path: {}",
+            arguments.extensionFilter.empty() ? "" : "with extension " + arguments.extensionFilter + " ",
+            inputPath.string()
+        );
         return EXIT_FAILURE;
     }
 
@@ -220,12 +228,13 @@ int main(int argc, char* argv[]) try {
     );
     return filesSkipped ? EXIT_FAILURE : EXIT_SUCCESS;
 } catch (const std::filesystem::filesystem_error& error) {
-    std::cerr << "Filesystem error: " << error.what() << '\n';
+    std::println(stderr, "Filesystem error: {}", error.what());
     return EXIT_FAILURE;
 }
 
 void print(const std::string& message) {
-    std::cout << message << '\n' << std::flush;
+    std::println("{}", message);
+    std::fflush(stdout);
 }
 
 void print_progress_bar(const double& progress, const double& total) {
@@ -236,8 +245,8 @@ void print_progress_bar(const double& progress, const double& total) {
         PROGRESS_BAR[i + 2] = i < threshold ? '=' : ' ';
     }
 
-    std::cout.write(PROGRESS_BAR, sizeof(PROGRESS_BAR) - 1);
-    std::cout.flush();
+    std::print("{}", PROGRESS_BAR);
+    std::fflush(stdout);
     isProgressBarActive = true;
 }
 
@@ -246,7 +255,8 @@ void erase_progress_bar() {
 
     if (!isProgressBarActive)
         return;
-    std::cout << PROGRESS_BAR_ERASER << std::flush;
+    std::print("{}", PROGRESS_BAR_ERASER);
+    std::fflush(stdout);
     isProgressBarActive = false;
 }
 

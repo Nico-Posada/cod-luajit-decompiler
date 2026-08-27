@@ -1,10 +1,11 @@
 #include <bit>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <format>
 #include <fstream>
-#include <iostream>
+#include <print>
 #include <string>
 #include <unordered_map>
 #include <vector>

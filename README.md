@@ -8,7 +8,7 @@ full support for gotos and stripped bytecode including locals and upvalues.
 
 ## Requirements
 
-- A C++23 compiler
+- A C++23 compiler and standard library with `<print>` support (GCC 14 or newer, recent Clang/libc++, or MSVC)
 - CMake 3.20 or newer
 
 ## Build and install
