@@ -17,6 +17,6 @@ Do not broaden behavior for stock LuaJIT or unrelated games unless it is also re
 Build with:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
 cmake --build build --config Release --parallel
 ```

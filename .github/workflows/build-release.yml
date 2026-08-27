@@ -19,11 +19,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-24.04
-            compiler_args: -DCMAKE_CXX_COMPILER=g++-14
+            compiler_args: -DCMAKE_CXX_COMPILER=clang++-18
             binary: luajit-decompiler-v2
             asset: luajit-decompiler-v2-linux-x86_64
           - os: windows-2025
-            compiler_args: ""
+            compiler_args: -T ClangCL
             binary: luajit-decompiler-v2.exe
             asset: luajit-decompiler-v2-windows-x86_64.exe
 

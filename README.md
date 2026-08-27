@@ -8,16 +8,18 @@ full support for gotos and stripped bytecode including locals and upvalues.
 
 ## Requirements
 
-- A C++23 compiler and standard library with `<print>` support (GCC 14 or newer, recent Clang/libc++, or MSVC)
+- Clang with a C++23 standard library that supports `<print>` (libstdc++ 14, libc++, or the MSVC STL)
 - CMake 3.20 or newer
 
 ## Build and install
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
 cmake --build build --config Release --parallel
 cmake --install build --config Release --prefix "$PWD/dist"
 ```
+
+On Windows, configure with `-T ClangCL` instead of `-DCMAKE_CXX_COMPILER=clang++`.
 
 The installed executable is `dist/bin/luajit-decompiler-v2` on Linux and
 `dist/bin/luajit-decompiler-v2.exe` on Windows.
