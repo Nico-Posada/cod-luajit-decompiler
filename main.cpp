@@ -1,5 +1,11 @@
 #include "main.h"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
+
 struct Error {
     const std::string message;
     const std::string filePath;
@@ -20,6 +26,30 @@ static struct {
     std::filesystem::path outputPath;
     std::string extensionFilter = ".lua";
 } arguments;
+
+static std::filesystem::path get_executable_directory(const char* executableArgument) {
+#ifdef __linux__
+    std::error_code error;
+    const std::filesystem::path executablePath = std::filesystem::read_symlink("/proc/self/exe", error);
+    if (!error && !executablePath.empty())
+        return executablePath.lexically_normal().parent_path();
+#elif defined(_WIN32)
+    std::wstring buffer(256, L'\0');
+
+    while (buffer.size() <= 32768) {
+        const DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+        if (!length)
+            break;
+        if (length < buffer.size()) {
+            buffer.resize(length);
+            return std::filesystem::path(buffer).lexically_normal().parent_path();
+        }
+        buffer.resize(buffer.size() * 2);
+    }
+#endif
+
+    return std::filesystem::absolute(executableArgument).lexically_normal().parent_path();
+}
 
 static std::string string_to_lowercase(const std::string& string) {
     std::string lowercaseString = string;
@@ -60,10 +90,14 @@ find_input_files(const std::filesystem::path& inputPath, const std::filesystem::
     return inputFiles;
 }
 
-static bool decompile_file(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile) {
+static bool decompile_file(
+    const std::filesystem::path& inputFile,
+    const std::filesystem::path& outputFile,
+    const HashResolver& hashResolver
+) {
     std::filesystem::create_directories(outputFile.parent_path());
     Bytecode bytecode(inputFile.string());
-    Ast ast(bytecode, arguments.ignoreDebugInfo, arguments.minimizeDiffs);
+    Ast ast(bytecode, hashResolver, arguments.ignoreDebugInfo, arguments.minimizeDiffs);
     Lua lua(
         bytecode,
         ast,
@@ -203,6 +237,8 @@ int main(int argc, char* argv[]) try {
         return EXIT_FAILURE;
     }
 
+    const HashResolver hashResolver(get_executable_directory(argv[0]) / "PackageIndex");
+
     std::size_t filesSkipped = 0;
 
     for (const std::filesystem::path& inputFile : inputFiles) {
@@ -215,7 +251,7 @@ int main(int argc, char* argv[]) try {
         }
 
         outputFile.replace_extension(".lua");
-        if (!decompile_file(inputFile, outputPath / outputFile))
+        if (!decompile_file(inputFile, outputPath / outputFile, hashResolver))
             filesSkipped++;
     }
 

@@ -31,6 +31,7 @@ class Lua {
     void write_function_definition(const Ast::Function& function, const bool& isMethod);
     void write_number(const double& number);
     void write_string(const std::string& string);
+    void write_name(const Ast::Constant& constant);
     uint8_t get_operator_precedence(const Ast::Expression& expression);
     void write(const std::string& string);
     template <typename... Strings> void write(const std::string& string, const Strings&... strings);

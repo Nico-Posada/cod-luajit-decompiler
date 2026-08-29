@@ -21,7 +21,12 @@ class Ast {
 #include "building_blocks.h"
 #include "function.h"
 
-    Ast(const Bytecode& bytecode, const bool& ignoreDebugInfo, const bool& minimizeDiffs);
+    Ast(
+        const Bytecode& bytecode,
+        const HashResolver& hashResolver,
+        const bool& ignoreDebugInfo,
+        const bool& minimizeDiffs
+    );
     ~Ast();
 
     void operator()();
@@ -75,6 +80,7 @@ class Ast {
     Expression* new_string(const Function& function, const uint16_t& index);
     Expression* new_table(const Function& function, const uint16_t& index);
     Expression* new_cdata(const Function& function, const uint16_t& index);
+    void initialize_hash(Constant* constant, uint64_t hash, Bytecode::XHashType hashType);
     Expression* new_hash(const Function& function, const uint16_t& index);
 
     static uint32_t get_block_index_from_id(const std::vector<Statement*>& block, const uint32_t& id);
@@ -88,6 +94,7 @@ class Ast {
     static CONSTANT_TYPE get_constant_type(Expression* const& expression);
 
     const Bytecode& bytecode;
+    const HashResolver& hashResolver;
     const bool ignoreDebugInfo;
     const bool minimizeDiffs;
     bool isFR2Enabled = false;

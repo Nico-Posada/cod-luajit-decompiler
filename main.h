@@ -31,6 +31,7 @@ void assert(
     const uint32_t& line
 );
 std::string byte_to_string(const uint8_t& byte);
+#include "hash/hash_resolver.h"
 
 class Bytecode;
 class Ast;

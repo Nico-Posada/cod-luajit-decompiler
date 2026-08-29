@@ -230,7 +230,8 @@ void Lua::write_block(const Ast::Function& function, const std::vector<Ast::Stat
                         block[i]->assignment.expressions.back()->function->parameterNames.size() &&
                         block[i]->assignment.expressions.back()->function->parameterNames.front() == "self") {
                         write_variable(*block[i]->assignment.variables.back().table->variable, false);
-                        write(":", block[i]->assignment.variables.back().tableIndex->constant->string);
+                        write(":");
+                        write_name(*block[i]->assignment.variables.back().tableIndex->constant);
                         write_function_definition(*block[i]->assignment.expressions.back()->function, true);
                     } else {
                         write_variable(block[i]->assignment.variables.back(), false);
@@ -402,15 +403,27 @@ void Lua::write_expression(const Ast::Expression& expression, const bool& usePar
                             break;
                     }
 
-                    if (hashPrefix) {
-                        if (expression.constant->hashType == Bytecode::XHASH_32)
-                            write(
-                                hashPrefix,
-                                std::format("\"0x{:08X}\"", static_cast<uint32_t>(expression.constant->hash))
-                            );
-                        else
-                            write(hashPrefix, std::format("\"0x{:016X}\"", expression.constant->hash));
+                    if (!hashPrefix)
+                        break;
+
+                    if (expression.constant->resolvedHash) {
+                        if (expression.constant->hashType == Bytecode::XHASH_LUA) {
+                            write("@", *expression.constant->resolvedHash);
+                        } else {
+                            write(hashPrefix, "\"");
+                            write_string(*expression.constant->resolvedHash);
+                            write("\"");
+                        }
+                        break;
                     }
+
+                    if (expression.constant->hashType == Bytecode::XHASH_32)
+                        write(
+                            hashPrefix,
+                            std::format("\"0x{:08X}\"", static_cast<uint32_t>(expression.constant->hash))
+                        );
+                    else
+                        write(hashPrefix, std::format("\"0x{:016X}\"", expression.constant->hash));
                     break;
                 }
                 case Ast::AST_CONSTANT_STRING:
@@ -486,7 +499,7 @@ void Lua::write_expression(const Ast::Expression& expression, const bool& usePar
 
                         if (expression.table->fields[nextFieldIndex].key->type == Ast::AST_EXPRESSION_CONSTANT &&
                             expression.table->fields[nextFieldIndex].key->constant->isName) {
-                            write(expression.table->fields[nextFieldIndex].key->constant->string);
+                            write_name(*expression.table->fields[nextFieldIndex].key->constant);
                         } else {
                             write("[");
                             write_expression(*expression.table->fields[nextFieldIndex].key, false);
@@ -566,7 +579,7 @@ void Lua::write_expression(const Ast::Expression& expression, const bool& usePar
                 }
 
                 if (expression.table->constants.fields[i].key->constant->isName) {
-                    write(expression.table->constants.fields[i].key->constant->string);
+                    write_name(*expression.table->constants.fields[i].key->constant);
                 } else {
                     write("[");
                     write_expression(*expression.table->constants.fields[i].key, false);
@@ -586,7 +599,7 @@ void Lua::write_expression(const Ast::Expression& expression, const bool& usePar
 
                 if (expression.table->fields[i].key->type == Ast::AST_EXPRESSION_CONSTANT &&
                     expression.table->fields[i].key->constant->isName) {
-                    write(expression.table->fields[i].key->constant->string);
+                    write_name(*expression.table->fields[i].key->constant);
                 } else {
                     write("[");
                     write_expression(*expression.table->fields[i].key, false);
@@ -756,6 +769,13 @@ void Lua::write_prefix_expression(const Ast::Expression& expression, const bool&
     }
 }
 
+void Lua::write_name(const Ast::Constant& constant) {
+    if (constant.resolvedHash && constant.hashType == Bytecode::XHASH_LUA)
+        write("@", *constant.resolvedHash);
+    else
+        write(constant.string);
+}
+
 void Lua::write_variable(const Ast::Variable& variable, const bool& isLineStart) {
     switch (variable.type) {
         case Ast::AST_VARIABLE_SLOT:
@@ -771,7 +791,8 @@ void Lua::write_variable(const Ast::Variable& variable, const bool& isLineStart)
             write_prefix_expression(*variable.table, isLineStart);
 
             if (variable.tableIndex->type == Ast::AST_EXPRESSION_CONSTANT && variable.tableIndex->constant->isName) {
-                write(".", variable.tableIndex->constant->string);
+                write(".");
+                write_name(*variable.tableIndex->constant);
                 break;
             }
 
@@ -785,7 +806,8 @@ void Lua::write_variable(const Ast::Variable& variable, const bool& isLineStart)
 void Lua::write_function_call(const Ast::FunctionCall& functionCall, const bool& isLineStart) {
     if (functionCall.isMethod) {
         write_prefix_expression(*functionCall.function->variable->table, isLineStart);
-        write(":", functionCall.function->variable->tableIndex->constant->string);
+        write(":");
+        write_name(*functionCall.function->variable->tableIndex->constant);
     } else {
         write_prefix_expression(*functionCall.function, isLineStart);
     }

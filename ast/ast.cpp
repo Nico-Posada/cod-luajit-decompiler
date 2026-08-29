@@ -1,7 +1,15 @@
 #include "../main.h"
 
-Ast::Ast(const Bytecode& bytecode, const bool& ignoreDebugInfo, const bool& minimizeDiffs)
-    : bytecode(bytecode), ignoreDebugInfo(ignoreDebugInfo), minimizeDiffs(minimizeDiffs) {
+Ast::Ast(
+    const Bytecode& bytecode,
+    const HashResolver& hashResolver,
+    const bool& ignoreDebugInfo,
+    const bool& minimizeDiffs
+)
+    : bytecode(bytecode),
+      hashResolver(hashResolver),
+      ignoreDebugInfo(ignoreDebugInfo),
+      minimizeDiffs(minimizeDiffs) {
 }
 
 Ast::~Ast() {
@@ -4628,9 +4636,7 @@ Ast::Expression* Ast::new_table(const Function& function, const uint16_t& index)
                 check_special_number(expression);
                 break;
             case Bytecode::BC_KTAB_HASH:
-                expression->constant->type = AST_CONSTANT_HASH;
-                expression->constant->hash = constant.hash;
-                expression->constant->hashType = constant.hashType;
+                initialize_hash(expression->constant, constant.hash, constant.hashType);
                 break;
             case Bytecode::BC_KTAB_STR:
                 expression->constant->type = AST_CONSTANT_STRING;
@@ -4766,10 +4772,18 @@ Ast::Expression* Ast::new_cdata(const Function& function, const uint16_t& index)
     return expression;
 }
 
+void Ast::initialize_hash(Constant* const constant, const uint64_t hash, const Bytecode::XHashType hashType) {
+    constant->type = AST_CONSTANT_HASH;
+    constant->hash = hash;
+    constant->hashType = hashType;
+    constant->resolvedHash = hashResolver.resolve(hash);
+    constant->isName = constant->resolvedHash && hashType == Bytecode::XHASH_LUA;
+}
+
 Ast::Expression* Ast::new_hash(const Function& function, const uint16_t& index) {
     Expression* const expression = new_expression(AST_EXPRESSION_CONSTANT);
-    expression->constant->type = AST_CONSTANT_HASH;
-    expression->constant->hash = function.get_constant(index).hash;
-    expression->constant->hashType = function.get_constant(index).hashType;
+    initialize_hash(
+        expression->constant, function.get_constant(index).hash, function.get_constant(index).hashType
+    );
     return expression;
 }

@@ -115,6 +115,7 @@ struct Constant {
     };
     uint64_t hash = 0;
     Bytecode::XHashType hashType = Bytecode::XHASH_LUA;
+    const std::string* resolvedHash = nullptr;
 
     std::string string;
     bool isName = false;
