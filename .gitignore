@@ -402,3 +402,5 @@ FodyWeavers.xsd
 
 /build/
 /dist/
+.luarc.json
+/test/

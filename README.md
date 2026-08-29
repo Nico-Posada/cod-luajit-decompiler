@@ -1,8 +1,8 @@
 This branch supports Call of Duty bytecode versions `0x82`, `0x83` and `0x84`.
 
-## LuaJIT Decompiler v2
+## CoD LuaJIT Decompiler
 
-*LuaJIT Decompiler v2* is a replacement tool for the old and now mostly defunct python decompiler.  
+*CoD LuaJIT Decompiler* is a replacement tool for the old and now mostly defunct python decompiler.  
 The project fixes all of the bugs and quirks the python decompiler had while also offering  
 full support for gotos and stripped bytecode including locals and upvalues.
 
@@ -21,13 +21,13 @@ cmake --install build --config Release --prefix "$PWD/dist"
 
 On Windows, configure with `-T ClangCL` instead of `-DCMAKE_CXX_COMPILER=clang++`.
 
-The installed executable is `dist/bin/luajit-decompiler-v2` on Linux and
-`dist/bin/luajit-decompiler-v2.exe` on Windows.
+The installed executable is `dist/bin/cod-luajit-decompiler` on Linux and
+`dist/bin/cod-luajit-decompiler.exe` on Windows.
 
 ## Usage
 
 ```text
-luajit-decompiler-v2 INPUT_PATH [options]
+cod-luajit-decompiler INPUT_PATH [options]
 ```
 
 For a directory input, output defaults to `<input-directory>/output` and retains
@@ -41,7 +41,7 @@ fails. Existing output files are left untouched unless `-f`/`--force_overwrite`
 is supplied. Windows Explorer drag-and-drop remains available because the
 dropped path is passed as the first command-line argument.
 
-Feel free to [report any issues](https://github.com/marsinator358/luajit-decompiler-v2/issues/new) you have.
+Feel free to [report any issues](https://github.com/Nico-Posada/cod-luajit-decompiler/issues/new) you have.
 
 ## TODO
 

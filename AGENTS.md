@@ -20,3 +20,5 @@ Build with:
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
 cmake --build build --config Release --parallel
 ```
+
+When starting changes, don't create a new branch unless it's a large enough to warrant a new branch. When committing changes, use conventional commit messages.

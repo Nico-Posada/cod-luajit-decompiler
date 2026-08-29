@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) try {
 
     if (arguments.showHelp) {
         print(
-            "Usage: luajit-decompiler-v2 INPUT_PATH [options]\n"
+            "Usage: cod-luajit-decompiler INPUT_PATH [options]\n"
             "\n"
             "Available options:\n"
             "  -h, -?, --help\t\tShow this message\n"
