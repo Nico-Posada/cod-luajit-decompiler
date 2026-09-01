@@ -1,64 +1,95 @@
-This branch supports Call of Duty bytecode versions `0x82`, `0x83` and `0x84`.
-
 ## CoD LuaJIT Decompiler
 
-*CoD LuaJIT Decompiler* is a replacement tool for the old and now mostly defunct python decompiler.  
-The project fixes all of the bugs and quirks the python decompiler had while also offering  
-full support for gotos and stripped bytecode including locals and upvalues.
+A fork of [marsinator358](https://github.com/marsinator358)'s [luajit-decompiler-v2](https://github.com/marsinator358/luajit-decompiler-v2) project geared specifically towards decompiling Call of Duty (CoD) lua bytecode.
 
-## Requirements
+The original project did have a branch dedicated to adding support for CoD (and this fork has it as a base), but the project still felt like a catch-all for luajit and was missing some specializations that could clean up the decomps.
+
+## Simple Usage
+
+If you're on Windows, simply download the executable from the Releases tab and drag-and-drop your bytecode files onto the executable to begin the decompilation process.
+
+## CLI Usage
+
+Use `-h` or `-?` to show the help menu
+
+```bash
+ > dist/bin/cod-luajit-decompiler -h
+Usage: cod-luajit-decompiler [--help] [--output OUTPUT_PATH] [--extension EXTENSION] [--bit-length BIT_LENGTH] [--force_overwrite] [--ignore_debug_info] [--minimize_diffs] INPUT_PATH
+
+Decompile Call of Duty LuaJIT bytecode into readable Lua source.
+
+Positional arguments:
+  INPUT_PATH                File or directory containing LuaJIT bytecode
+
+Optional arguments:
+  -h, --help                shows help message and exits
+  -o, --output OUTPUT_PATH  Override default output directory
+  -e, --extension           Only decompile files with the specified extension [nargs=0..1] [default: ".lua"]
+  -b, --bit-length          Set package-index hash width in bits (0-64) [nargs=0..1] [default: 64]
+  -f, --force_overwrite     Always overwrite existing files
+  -i, --ignore_debug_info   Ignore bytecode debug info
+  -m, --minimize_diffs      Optimize output formatting to help minimize diffs
+```
+
+For a directory input, output defaults to `<input-directory>/output` and keeps
+the input-relative directory tree. For a file input, output defaults to an
+`output` directory beside the file. Relative `--output` paths are resolved from
+the current working directory, and missing output directories are created.
+
+To resolve hashes, place WNI v1 (`.wni`) package-index files in a
+`PackageIndex` directory beside the executable (see projects like [GreyhoundPackageIndex](https://github.com/Scobalula/GreyhoundPackageIndex) for example wnis). Subdirectories are scanned
+recursively. `--bit-length` has no effect when this directory is absent.
+
+If `PackageIndex/.bit_length` exists, its decimal value overrides
+`--bit-length`. It must be between `0` and `64`. (This behavior is custom
+to this project, but will not affect any other projects that use the
+wni format)
+
+Example:
+```bash
+ > cat PackageIndex/.bit_length
+───────┬─────────────────────────────────────────────────────────────────────────
+       │ File: PackageIndex/.bit_length
+───────┼─────────────────────────────────────────────────────────────────────────
+   1   │ 64
+───────┴─────────────────────────────────────────────────────────────────────────
+```
+
+Batch runs continue after individual file failures and finish with a summary.
+The command exits unsuccessfully if any file fails.
+
+## Build Requirements
 
 - Clang with a C++23 standard library that supports `<print>` (libstdc++ 14, libc++, or the MSVC STL)
 - CMake 3.20 or newer
 
-## Build and install
+## Build and Install
+
+#### Windows
+
+```console
+cmake -S . -B build -T ClangCL
+cmake --build build --config Release --parallel
+cmake --install build --config Release --prefix dist
+```
+
+The executable is installed to `dist/bin/cod-luajit-decompiler.exe`.
+
+#### Linux
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
-cmake --build build --config Release --parallel
-cmake --install build --config Release --prefix "$PWD/dist"
+cmake --build build --parallel
+cmake --install build --prefix dist
 ```
 
-On Windows, configure with `-T ClangCL` instead of `-DCMAKE_CXX_COMPILER=clang++`.
+The executable is installed to `dist/bin/cod-luajit-decompiler`.
 
-The installed executable is `dist/bin/cod-luajit-decompiler` on Linux and
-`dist/bin/cod-luajit-decompiler.exe` on Windows.
+#### MacOS
 
-## Usage
-
-```text
-cod-luajit-decompiler [options] INPUT_PATH
-```
-
-Run `cod-luajit-decompiler --help` for the complete generated option reference.
-
-For a directory input, output defaults to `<input-directory>/output` and retains
-the input-relative directory tree. For a file input, output defaults to
-`<input-file-parent>/output`. A relative `-o`/`--output` path is resolved from
-the current working directory, and missing output directories are created.
-
-`-b`/`--bit-length BIT_LENGTH` sets the package-index hash width used for both
-emitted hashes and WNI lookups. The accepted range is `0..64`, and the default
-is `64`. The option only applies when a `PackageIndex` directory exists beside
-the executable; without that directory, it is ignored.
-
-If `PackageIndex/.bit_length` exists, its decimal-text bit count overrides the
-CLI option. Surrounding ASCII whitespace is allowed. Package indexes without
-this metadata file remain supported, and use the CLI value or the `64` default.
-A malformed, unreadable, or out-of-range metadata value is fatal.
-
-Errors are written to standard error. Batch runs continue after per-file
-failures, always print a final summary, and exit unsuccessfully if any file
-fails. Existing output files are left untouched unless `-f`/`--force_overwrite`
-is supplied. Windows Explorer drag-and-drop remains available because the
-dropped path is passed as the first command-line argument.
+Mac is unsupported right now. Feel free to modify this project to include support for MacOS and open a PR.
 
 Feel free to [report any issues](https://github.com/Nico-Posada/cod-luajit-decompiler/issues/new) you have.
-
-## TODO
-
-* bytecode big endian support
-* improved decompilation logic for conditional assignments
 
 ---
 

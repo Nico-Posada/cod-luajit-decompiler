@@ -1,6 +1,6 @@
 # Project summary
 
-LuaJIT Decompiler v2 converts Call of Duty LuaJIT bytecode into readable Lua source. It is a C++23 command-line program built around the existing `Bytecode -> Ast -> Lua` pipeline and supports the Call of Duty bytecode versions `0x82`, `0x83`, and `0x84`.
+COD LuaJIT Decompiler converts Call of Duty LuaJIT bytecode into readable Lua source. It is a C++23 command-line program built around the existing `Bytecode -> Ast -> Lua` pipeline and supports the Call of Duty bytecode versions `0x82`, `0x83`, and `0x84`.
 
 # Project goals
 
@@ -22,3 +22,5 @@ cmake --build build --config Release --parallel
 ```
 
 When starting changes, don't create a new branch unless it's a large enough to warrant a new branch. When committing changes, use conventional commit messages.
+
+If you ever make changes to the CLI arg parsing - whether that be a new flag/description change - make sure to update the readme with the correct -h output.
