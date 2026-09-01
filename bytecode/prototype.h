@@ -36,6 +36,8 @@ class Prototype {
     uint64_t get_uint64();
     std::string get_string();
     TableConstant get_table_constant();
+    XHashType decode_xhash_type(uint8_t encodedHashType) const;
+    void read_hash(uint64_t& hash, XHashType& hashType);
 
     const Bytecode& bytecode;
 };

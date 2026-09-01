@@ -14,7 +14,7 @@ Use `-h` or `-?` to show the help menu
 
 ```bash
  > dist/bin/cod-luajit-decompiler -h
-Usage: cod-luajit-decompiler [--help] [--output OUTPUT_PATH] [--extension EXTENSION] [--bit-length BIT_LENGTH] [--force_overwrite] [--ignore_debug_info] [--minimize_diffs] INPUT_PATH
+Usage: cod-luajit-decompiler [--help] [--output OUTPUT_PATH] [--extension EXTENSION] [--bit-length BIT_LENGTH] [--force_overwrite] [--ignore_debug_info] [--minimize_diffs] [--new-xhash-enum] [--uleb-hash] INPUT_PATH
 
 Decompile Call of Duty LuaJIT bytecode into readable Lua source.
 
@@ -29,7 +29,11 @@ Optional arguments:
   -f, --force_overwrite     Always overwrite existing files
   -i, --ignore_debug_info   Ignore bytecode debug info
   -m, --minimize_diffs      Optimize output formatting to help minimize diffs
+  --new-xhash-enum          Use the 0x84 XHashType enum for 0x83 bytecode
+  --uleb-hash               Read 0x84 hashes as two ULEB128 values
 ```
+
+`--new-xhash-enum` only affects 0x83 bytecode; `--uleb-hash` only affects 0x84 bytecode. Both options are ignored for other versions.
 
 For a directory input, output defaults to `<input-directory>/output` and keeps
 the input-relative directory tree. For a file input, output defaults to an

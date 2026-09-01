@@ -27,6 +27,8 @@ static struct {
     bool forceOverwrite = false;
     bool ignoreDebugInfo = false;
     bool minimizeDiffs = false;
+    bool newXHashEnum = false;
+    bool ulebHash = false;
     int bitLength = 64;
     std::filesystem::path inputPath;
     std::filesystem::path outputPath;
@@ -123,7 +125,7 @@ static bool decompile_file(
     indicators::ProgressBar& progressBar
 ) {
     std::filesystem::create_directories(outputFile.parent_path());
-    Bytecode bytecode(inputFile.string());
+    Bytecode bytecode(inputFile.string(), arguments.newXHashEnum, arguments.ulebHash);
     Ast ast(bytecode, hashResolver, arguments.ignoreDebugInfo, arguments.minimizeDiffs);
     Lua lua(
         bytecode,
@@ -187,6 +189,14 @@ int main(int argc, char* argv[]) try {
         .help("Optimize output formatting to help minimize diffs")
         .flag()
         .store_into(arguments.minimizeDiffs);
+    program.add_argument("--new-xhash-enum")
+        .help("Use the 0x84 XHashType enum for 0x83 bytecode")
+        .flag()
+        .store_into(arguments.newXHashEnum);
+    program.add_argument("--uleb-hash")
+        .help("Read 0x84 hashes as two ULEB128 values")
+        .flag()
+        .store_into(arguments.ulebHash);
 
     try {
         program.parse_args(argc, argv);

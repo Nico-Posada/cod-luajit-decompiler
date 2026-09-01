@@ -7,11 +7,12 @@ class Bytecode {
     struct TableNode;
     struct VariableInfo;
     struct Instruction;
+    enum XHashType : int8_t;
 #include "prototype.h"
 #include "constants.h"
 #include "instructions.h"
 
-    Bytecode(const std::string& filePath);
+    Bytecode(const std::string& filePath, const bool& newXHashEnum, const bool& ulebHash);
     ~Bytecode();
 
     void operator()();
@@ -41,4 +42,6 @@ class Bytecode {
     uint64_t bytesUnread = 0;
     std::vector<uint8_t> fileBuffer;
     std::vector<Prototype*> prototypes;
+    const bool newXHashEnum;
+    const bool ulebHash;
 };

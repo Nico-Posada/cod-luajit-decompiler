@@ -1,6 +1,7 @@
 #include "../main.h"
 
-Bytecode::Bytecode(const std::string& filePath) : filePath(filePath) {
+Bytecode::Bytecode(const std::string& filePath, const bool& newXHashEnum, const bool& ulebHash)
+    : filePath(filePath), newXHashEnum(newXHashEnum), ulebHash(ulebHash) {
 }
 
 Bytecode::~Bytecode() {

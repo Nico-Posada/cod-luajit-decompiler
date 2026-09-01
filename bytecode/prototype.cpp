@@ -117,6 +117,39 @@ void Bytecode::Prototype::read_upvalues() {
     }
 }
 
+Bytecode::XHashType Bytecode::Prototype::decode_xhash_type(const uint8_t encodedHashType) const {
+    if (bytecode.header.version == BC_VERSION_82 ||
+        (bytecode.header.version == BC_VERSION_83 && !bytecode.newXHashEnum)) {
+        assert(
+            encodedHashType <= 3,
+            "Prototype has invalid XHash type (" + byte_to_string(encodedHashType) + ")",
+            bytecode.filePath,
+            DEBUG_INFO
+        );
+        if (encodedHashType == 2)
+            return XHASH_ASSET;
+        if (encodedHashType == 3)
+            return XHASH_32;
+    }
+
+    return static_cast<XHashType>(encodedHashType);
+}
+
+void Bytecode::Prototype::read_hash(uint64_t& hash, XHashType& hashType) {
+    if (bytecode.header.version == BC_VERSION_84 && !bytecode.ulebHash) {
+        const uint8_t encodedHashType = get_next_byte();
+        if (!(encodedHashType & 0x80))
+            hash = get_uint64();
+        hashType = decode_xhash_type(encodedHashType & 0x7F);
+        return;
+    }
+
+    hash = static_cast<uint64_t>(get_uleb128()) << 32;
+    hash |= get_uleb128();
+    if (bytecode.header.version != BC_VERSION_82)
+        hashType = decode_xhash_type(get_next_byte());
+}
+
 void Bytecode::Prototype::read_constants(std::vector<Prototype*>& unlinkedPrototypes) {
     uint32_t type;
 
@@ -171,19 +204,7 @@ void Bytecode::Prototype::read_constants(std::vector<Prototype*>& unlinkedProtot
             case BC_KGC_HASH:
                 constants[i].type = (BC_KGC)type;
 
-                if (bytecode.header.version == BC_VERSION_84) {
-                    const uint8_t encodedHashType = get_next_byte();
-                    if (!(encodedHashType & 0x80))
-                        constants[i].hash = get_uint64();
-                    constants[i].hashType = static_cast<XHashType>(encodedHashType & 0x7F);
-                } else {
-                    constants[i].hash = (uint64_t)get_uleb128() << 32;
-                    constants[i].hash |= get_uleb128();
-                    if (bytecode.header.version != BC_VERSION_82) {
-                        const uint8_t encodedHashType = get_next_byte();
-                        constants[i].hashType = static_cast<XHashType>(encodedHashType);
-                    }
-                }
+                read_hash(constants[i].hash, constants[i].hashType);
 
                 continue;
             default:
@@ -373,19 +394,7 @@ Bytecode::TableConstant Bytecode::Prototype::get_table_constant() {
         case BC_KTAB_HASH:
             tableConstant.type = BC_KTAB_HASH;
 
-            if (bytecode.header.version == BC_VERSION_84) {
-                const uint8_t encodedHashType = get_next_byte();
-                if (!(encodedHashType & 0x80))
-                    tableConstant.hash = get_uint64();
-                tableConstant.hashType = static_cast<XHashType>(encodedHashType & 0x7F);
-            } else {
-                tableConstant.hash = (uint64_t)get_uleb128() << 32;
-                tableConstant.hash |= get_uleb128();
-                if (bytecode.header.version != BC_VERSION_82) {
-                    const uint8_t encodedHashType = get_next_byte();
-                    tableConstant.hashType = static_cast<XHashType>(encodedHashType);
-                }
-            }
+            read_hash(tableConstant.hash, tableConstant.hashType);
 
             break;
         default:
