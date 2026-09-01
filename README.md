@@ -6,7 +6,7 @@ The original project did have a branch dedicated to adding support for CoD (and 
 
 ## Simple Usage
 
-If you're on Windows, simply download the executable from the Releases tab and drag-and-drop your bytecode files onto the executable to begin the decompilation process.
+If you're on Windows, simply download the executable from the [Releases](https://github.com/Nico-Posada/cod-luajit-decompiler/releases/latest) tab and drag-and-drop your bytecode files onto the executable to begin the decompilation process.
 
 ## CLI Usage
 
