@@ -25,8 +25,6 @@ void Lua::operator()() {
 }
 
 void Lua::write_header() {
-    if (!unrestrictedAscii)
-        write(UTF8_BOM);
     if (!bytecode.header.chunkname.size())
         return;
     write("-- chunkname: ");

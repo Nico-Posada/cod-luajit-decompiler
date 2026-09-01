@@ -12,8 +12,11 @@ class Lua {
     const std::string filePath;
 
   private:
-    static constexpr char UTF8_BOM[] = "\xEF\xBB\xBF";
+#ifdef _WIN32
     static constexpr char NEW_LINE[] = "\r\n";
+#else
+    static constexpr char NEW_LINE[] = "\n";
+#endif
 
     void write_header();
     void write_block(const Ast::Function& function, const std::vector<Ast::Statement*>& block);
