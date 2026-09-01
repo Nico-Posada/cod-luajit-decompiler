@@ -4,8 +4,7 @@ class Lua {
         const Ast& ast,
         const std::string& filePath,
         const bool& forceOverwrite,
-        const bool& minimizeDiffs,
-        const bool& unrestrictedAscii);
+        const bool& minimizeDiffs);
 
     void operator()();
 
@@ -45,7 +44,6 @@ class Lua {
     const Ast& ast;
     const bool forceOverwrite;
     const bool minimizeDiffs;
-    const bool unrestrictedAscii;
     std::string writeBuffer;
     uint32_t indentLevel = 0;
 };

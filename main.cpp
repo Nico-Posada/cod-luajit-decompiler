@@ -27,7 +27,6 @@ static struct {
     bool forceOverwrite = false;
     bool ignoreDebugInfo = false;
     bool minimizeDiffs = false;
-    bool unrestrictedAscii = false;
     std::filesystem::path inputPath;
     std::filesystem::path outputPath;
     std::string extensionFilter;
@@ -130,8 +129,7 @@ static bool decompile_file(
         ast,
         outputFile.string(),
         arguments.forceOverwrite,
-        arguments.minimizeDiffs,
-        arguments.unrestrictedAscii
+        arguments.minimizeDiffs
     );
 
     try {
@@ -183,10 +181,6 @@ int main(int argc, char* argv[]) try {
         .help("Optimize output formatting to help minimize diffs")
         .flag()
         .store_into(arguments.minimizeDiffs);
-    program.add_argument("-u", "--unrestricted_ascii")
-        .help("Disable default UTF-8 encoding and string restrictions")
-        .flag()
-        .store_into(arguments.unrestrictedAscii);
 
     try {
         program.parse_args(argc, argv);

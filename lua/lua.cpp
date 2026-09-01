@@ -5,11 +5,9 @@ Lua::Lua(
     const Ast& ast,
     const std::string& filePath,
     const bool& forceOverwrite,
-    const bool& minimizeDiffs,
-    const bool& unrestrictedAscii
+    const bool& minimizeDiffs
 )
-    : bytecode(bytecode), ast(ast), filePath(filePath), forceOverwrite(forceOverwrite), minimizeDiffs(minimizeDiffs),
-      unrestrictedAscii(unrestrictedAscii) {
+    : bytecode(bytecode), ast(ast), filePath(filePath), forceOverwrite(forceOverwrite), minimizeDiffs(minimizeDiffs) {
 }
 
 void Lua::operator()() {
@@ -950,8 +948,8 @@ void Lua::write_string(const std::string& string) {
         const uint8_t byte = static_cast<uint8_t>(string[i]);
         value = byte;
 
-        if (unrestrictedAscii || !(value & 0x80)) {
-            if ((byte >= ' ' && byte <= '~') || (unrestrictedAscii && byte >= 0x80)) {
+        if (!(value & 0x80)) {
+            if (byte >= ' ' && byte <= '~') {
                 switch (byte) {
                     case '"':
                     case '\\':
