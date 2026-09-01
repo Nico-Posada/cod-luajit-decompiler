@@ -1,4 +1,5 @@
 #include "main.h"
+#include <argparse/argparse.hpp>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -17,14 +18,13 @@ struct Error {
 static bool isProgressBarActive = false;
 
 static struct {
-    bool showHelp = false;
     bool forceOverwrite = false;
     bool ignoreDebugInfo = false;
     bool minimizeDiffs = false;
     bool unrestrictedAscii = false;
     std::filesystem::path inputPath;
     std::filesystem::path outputPath;
-    std::string extensionFilter = ".lua";
+    std::string extensionFilter;
 } arguments;
 
 static std::filesystem::path get_executable_directory(const char* executableArgument) {
@@ -131,64 +131,44 @@ static bool decompile_file(
     }
 }
 
-static const char* parse_arguments(const int argc, char* const argv[]) {
-    for (int i = 1; i < argc; i++) {
-        const std::string argument = argv[i];
-
-        if (argument == "-h" || argument == "-?" || argument == "--help") {
-            arguments.showHelp = true;
-        } else if (argument == "-f" || argument == "--force_overwrite") {
-            arguments.forceOverwrite = true;
-        } else if (argument == "-i" || argument == "--ignore_debug_info") {
-            arguments.ignoreDebugInfo = true;
-        } else if (argument == "-m" || argument == "--minimize_diffs") {
-            arguments.minimizeDiffs = true;
-        } else if (argument == "-u" || argument == "--unrestricted_ascii") {
-            arguments.unrestrictedAscii = true;
-        } else if (argument == "-e" || argument == "--extension") {
-            if (++i >= argc)
-                return argv[i - 1];
-            arguments.extensionFilter = argv[i];
-        } else if (argument == "-o" || argument == "--output") {
-            if (++i >= argc)
-                return argv[i - 1];
-            arguments.outputPath = argv[i];
-        } else if (!argument.empty() && argument.front() == '-') {
-            return argv[i];
-        } else if (arguments.inputPath.empty()) {
-            arguments.inputPath = argv[i];
-        } else {
-            return argv[i];
-        }
-    }
-
-    return nullptr;
-}
-
 int main(int argc, char* argv[]) try {
-    if (const char* invalid = parse_arguments(argc, argv)) {
-        std::println(stderr, "Invalid argument: {}\nUse -? to show usage and options.", invalid);
-        return EXIT_FAILURE;
-    }
+    argparse::ArgumentParser program("cod-luajit-decompiler", "", argparse::default_arguments::help);
+    program.add_description("Decompile Call of Duty LuaJIT bytecode into readable Lua source.");
+    program.add_hidden_alias_for(program.at("-h"), "-?");
 
-    if (arguments.showHelp) {
-        print(
-            "Usage: cod-luajit-decompiler INPUT_PATH [options]\n"
-            "\n"
-            "Available options:\n"
-            "  -h, -?, --help\t\tShow this message\n"
-            "  -o, --output OUTPUT_PATH\tOverride default output directory\n"
-            "  -e, --extension EXTENSION\tOnly decompile files with the specified extension (default: .lua)\n"
-            "  -f, --force_overwrite\t\tAlways overwrite existing files\n"
-            "  -i, --ignore_debug_info\tIgnore bytecode debug info\n"
-            "  -m, --minimize_diffs\t\tOptimize output formatting to help minimize diffs\n"
-            "  -u, --unrestricted_ascii\tDisable default UTF-8 encoding and string restrictions"
-        );
-        return EXIT_SUCCESS;
-    }
+    program.add_argument("INPUT_PATH")
+        .help("File or directory containing LuaJIT bytecode")
+        .store_into(arguments.inputPath);
+    program.add_argument("-o", "--output")
+        .metavar("OUTPUT_PATH")
+        .help("Override default output directory")
+        .store_into(arguments.outputPath);
+    program.add_argument("-e", "--extension")
+        .metavar("EXTENSION")
+        .help("Only decompile files with the specified extension")
+        .default_value(std::string{".lua"})
+        .store_into(arguments.extensionFilter);
+    program.add_argument("-f", "--force_overwrite")
+        .help("Always overwrite existing files")
+        .flag()
+        .store_into(arguments.forceOverwrite);
+    program.add_argument("-i", "--ignore_debug_info")
+        .help("Ignore bytecode debug info")
+        .flag()
+        .store_into(arguments.ignoreDebugInfo);
+    program.add_argument("-m", "--minimize_diffs")
+        .help("Optimize output formatting to help minimize diffs")
+        .flag()
+        .store_into(arguments.minimizeDiffs);
+    program.add_argument("-u", "--unrestricted_ascii")
+        .help("Disable default UTF-8 encoding and string restrictions")
+        .flag()
+        .store_into(arguments.unrestrictedAscii);
 
-    if (arguments.inputPath.empty()) {
-        std::println(stderr, "No input path specified!");
+    try {
+        program.parse_args(argc, argv);
+    } catch (const std::exception& error) {
+        std::println(stderr, "{}\n\n{}", error.what(), program.help().str());
         return EXIT_FAILURE;
     }
 

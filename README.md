@@ -27,8 +27,10 @@ The installed executable is `dist/bin/cod-luajit-decompiler` on Linux and
 ## Usage
 
 ```text
-cod-luajit-decompiler INPUT_PATH [options]
+cod-luajit-decompiler [options] INPUT_PATH
 ```
+
+Run `cod-luajit-decompiler --help` for the complete generated option reference.
 
 For a directory input, output defaults to `<input-directory>/output` and retains
 the input-relative directory tree. For a file input, output defaults to
