@@ -273,6 +273,7 @@ int main(int argc, char* argv[]) try {
             indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}},
             indicators::option::MaxProgress{inputFiles.size()}};
 
+        indicators::show_console_cursor(false);
         try {
             progressBar.set_progress(0);
             for (std::size_t i = 0; i < inputFiles.size(); i++) {
@@ -292,8 +293,10 @@ int main(int argc, char* argv[]) try {
             }
         } catch (...) {
             progressBar.mark_as_completed();
+            indicators::show_console_cursor(true);
             throw;
         }
+        indicators::show_console_cursor(true);
     }
 
     std::print("\n");
