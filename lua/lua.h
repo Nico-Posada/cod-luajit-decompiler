@@ -48,5 +48,4 @@ class Lua {
     const bool unrestrictedAscii;
     std::string writeBuffer;
     uint32_t indentLevel = 0;
-    uint64_t prototypeDataLeft = 0;
 };

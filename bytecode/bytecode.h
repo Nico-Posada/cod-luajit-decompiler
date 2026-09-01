@@ -25,7 +25,6 @@ class Bytecode {
     } header;
 
     const Prototype* main = nullptr;
-    uint64_t prototypesTotalSize = 0;
 
   private:
     static constexpr uint8_t MIN_PROTO_SIZE = 11;

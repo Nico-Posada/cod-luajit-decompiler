@@ -13,15 +13,10 @@ Lua::Lua(
 }
 
 void Lua::operator()() {
-    print_progress_bar();
-    prototypeDataLeft = bytecode.prototypesTotalSize;
     write_header();
     if (ast.chunk->block.size())
         write_block(*ast.chunk, ast.chunk->block);
-    prototypeDataLeft -= ast.chunk->prototype.prototypeSize;
-    print_progress_bar(bytecode.prototypesTotalSize - prototypeDataLeft, bytecode.prototypesTotalSize);
     write_file();
-    erase_progress_bar();
 }
 
 void Lua::write_header() {
@@ -912,8 +907,6 @@ void Lua::write_function_definition(const Ast::Function& function, const bool& i
     indentLevel--;
     write_indent();
     write("end");
-    prototypeDataLeft -= function.prototype.prototypeSize;
-    print_progress_bar(bytecode.prototypesTotalSize - prototypeDataLeft, bytecode.prototypesTotalSize);
 }
 
 void Lua::write_number(const double& number) {

@@ -101,5 +101,4 @@ class Ast {
     std::vector<Statement*> statements;
     std::vector<Function*> functions;
     std::vector<Expression*> expressions;
-    uint64_t prototypeDataLeft = 0;
 };

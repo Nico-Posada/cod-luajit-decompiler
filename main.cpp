@@ -1,5 +1,13 @@
 #include "main.h"
 #include <argparse/argparse.hpp>
+#include <indicators/cursor_control.hpp>
+#include <indicators/progress_bar.hpp>
+#include <indicators/termcolor.hpp>
+#include <iostream>
+#include <utility>
+#ifdef assert
+#undef assert
+#endif
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -15,8 +23,6 @@ struct Error {
     const std::string line;
 };
 
-static bool isProgressBarActive = false;
-
 static struct {
     bool forceOverwrite = false;
     bool ignoreDebugInfo = false;
@@ -26,6 +32,26 @@ static struct {
     std::filesystem::path outputPath;
     std::string extensionFilter;
 } arguments;
+
+template <typename... Args>
+static void print_above(indicators::ProgressBar& progressBar, std::format_string<Args...> format, Args&&... args) {
+    indicators::erase_line();
+    std::cout << termcolor::reset << std::flush;
+    std::println(format, std::forward<Args>(args)...);
+    std::fflush(stdout);
+    progressBar.print_progress();
+}
+
+template <typename... Args>
+static void print_above(
+    indicators::ProgressBar& progressBar, std::FILE* stream, std::format_string<Args...> format, Args&&... args
+) {
+    indicators::erase_line();
+    std::cout << termcolor::reset << std::flush;
+    std::println(stream, format, std::forward<Args>(args)...);
+    std::fflush(stream);
+    progressBar.print_progress();
+}
 
 static std::filesystem::path get_executable_directory(const char* executableArgument) {
 #ifdef __linux__
@@ -93,7 +119,8 @@ find_input_files(const std::filesystem::path& inputPath, const std::filesystem::
 static bool decompile_file(
     const std::filesystem::path& inputFile,
     const std::filesystem::path& outputFile,
-    const HashResolver& hashResolver
+    const HashResolver& hashResolver,
+    indicators::ProgressBar& progressBar
 ) {
     std::filesystem::create_directories(outputFile.parent_path());
     Bytecode bytecode(inputFile.string());
@@ -108,19 +135,15 @@ static bool decompile_file(
     );
 
     try {
-        print("--------------------\nInput file: " + bytecode.filePath + "\nReading bytecode...");
         bytecode();
-        print("Building ast...");
         ast();
-        print("Writing lua source...");
         lua();
-        print("Output file: " + lua.filePath);
         return true;
     } catch (const Error& error) {
-        erase_progress_bar();
-        std::println(
+        print_above(
+            progressBar,
             stderr,
-            "\nError running {}\nSource: {}:{}\n\nFile: {}\n\n{}",
+            "Error running {}\nSource: {}:{}\n\nFile: {}\n\n{}",
             error.function,
             error.source,
             error.line,
@@ -221,59 +244,56 @@ int main(int argc, char* argv[]) try {
 
     std::size_t filesSkipped = 0;
 
-    for (const std::filesystem::path& inputFile : inputFiles) {
-        std::filesystem::path outputFile;
+    {
+        constexpr std::size_t PROGRESS_BAR_NON_BAR_WIDTH = 41;
+        const std::size_t terminalWidth = indicators::terminal_width();
+        const std::size_t barWidth =
+            terminalWidth > PROGRESS_BAR_NON_BAR_WIDTH ? terminalWidth - PROGRESS_BAR_NON_BAR_WIDTH : 1;
+        indicators::ProgressBar progressBar{
+            indicators::option::BarWidth{barWidth},
+            indicators::option::Start{"["},
+            indicators::option::Fill{"="},
+            indicators::option::Lead{">"},
+            indicators::option::Remainder{" "},
+            indicators::option::End{" ]"},
+            indicators::option::ShowPercentage{true},
+            indicators::option::ShowElapsedTime{true},
+            indicators::option::ShowRemainingTime{true},
+            indicators::option::PrefixText{"Decompiling "},
+            indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}},
+            indicators::option::MaxProgress{inputFiles.size()}};
 
-        if (inputIsDirectory) {
-            outputFile = inputFile.lexically_relative(inputPath);
-        } else {
-            outputFile = inputFile.filename();
+        try {
+            progressBar.set_progress(0);
+            for (std::size_t i = 0; i < inputFiles.size(); i++) {
+                const std::filesystem::path& inputFile = inputFiles[i];
+                std::filesystem::path outputFile;
+
+                if (inputIsDirectory) {
+                    outputFile = inputFile.lexically_relative(inputPath);
+                } else {
+                    outputFile = inputFile.filename();
+                }
+
+                outputFile.replace_extension(".lua");
+                if (!decompile_file(inputFile, outputPath / outputFile, hashResolver, progressBar))
+                    filesSkipped++;
+                progressBar.set_progress(i + 1);
+            }
+        } catch (...) {
+            progressBar.mark_as_completed();
+            throw;
         }
-
-        outputFile.replace_extension(".lua");
-        if (!decompile_file(inputFile, outputPath / outputFile, hashResolver))
-            filesSkipped++;
     }
 
-    print(
-        "--------------------\n" +
-        (filesSkipped
-             ? "Failed to decompile " + std::to_string(filesSkipped) + " file" + (filesSkipped > 1 ? "s" : "") + ".\n"
-             : "") +
-        "Done!"
-    );
+    std::print("\n");
+    if (filesSkipped)
+        std::println("Failed to decompile {} file{}.", filesSkipped, filesSkipped > 1 ? "s" : "");
+    std::println("Done! Decompiled {}/{} Files.", inputFiles.size() - filesSkipped, inputFiles.size());
     return filesSkipped ? EXIT_FAILURE : EXIT_SUCCESS;
 } catch (const std::filesystem::filesystem_error& error) {
     std::println(stderr, "Filesystem error: {}", error.what());
     return EXIT_FAILURE;
-}
-
-void print(const std::string& message) {
-    std::println("{}", message);
-    std::fflush(stdout);
-}
-
-void print_progress_bar(const double& progress, const double& total) {
-    static char PROGRESS_BAR[] = "\r[====================]";
-    const uint8_t threshold = std::round(20 / total * progress);
-
-    for (uint8_t i = 20; i--;) {
-        PROGRESS_BAR[i + 2] = i < threshold ? '=' : ' ';
-    }
-
-    std::print("{}", PROGRESS_BAR);
-    std::fflush(stdout);
-    isProgressBarActive = true;
-}
-
-void erase_progress_bar() {
-    static constexpr char PROGRESS_BAR_ERASER[] = "\r                      \r";
-
-    if (!isProgressBarActive)
-        return;
-    std::print("{}", PROGRESS_BAR_ERASER);
-    std::fflush(stdout);
-    isProgressBarActive = false;
 }
 
 void assert(

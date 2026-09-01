@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: [-std=c++23]
+  Add: [-std=c++23, -Ithird_party/argparse/include, -Ithird_party/indicators/include]

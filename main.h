@@ -18,10 +18,7 @@ constexpr uint64_t DOUBLE_FRACTION = 0x000FFFFFFFFFFFFF;
 constexpr uint64_t DOUBLE_SPECIAL = DOUBLE_EXPONENT;
 constexpr uint64_t DOUBLE_NEGATIVE_ZERO = DOUBLE_SIGN;
 
-void print(const std::string& message);
 // std::string input();
-void print_progress_bar(const double& progress = 0, const double& total = 100);
-void erase_progress_bar();
 void assert(
     const bool& assertion,
     const std::string& message,
