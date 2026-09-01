@@ -27,6 +27,7 @@ static struct {
     bool forceOverwrite = false;
     bool ignoreDebugInfo = false;
     bool minimizeDiffs = false;
+    int bitLength = 64;
     std::filesystem::path inputPath;
     std::filesystem::path outputPath;
     std::string extensionFilter;
@@ -169,6 +170,11 @@ int main(int argc, char* argv[]) try {
         .help("Only decompile files with the specified extension")
         .default_value(std::string{".lua"})
         .store_into(arguments.extensionFilter);
+    program.add_argument("-b", "--bit-length")
+        .metavar("BIT_LENGTH")
+        .help("Set package-index hash width in bits (0-64)")
+        .default_value(64)
+        .store_into(arguments.bitLength);
     program.add_argument("-f", "--force_overwrite")
         .help("Always overwrite existing files")
         .flag()
@@ -234,7 +240,7 @@ int main(int argc, char* argv[]) try {
         return EXIT_FAILURE;
     }
 
-    const HashResolver hashResolver(get_executable_directory(argv[0]) / "PackageIndex");
+    const HashResolver hashResolver(get_executable_directory(argv[0]) / "PackageIndex", arguments.bitLength);
 
     std::size_t filesSkipped = 0;
 
@@ -287,6 +293,9 @@ int main(int argc, char* argv[]) try {
     return filesSkipped ? EXIT_FAILURE : EXIT_SUCCESS;
 } catch (const std::filesystem::filesystem_error& error) {
     std::println(stderr, "Filesystem error: {}", error.what());
+    return EXIT_FAILURE;
+} catch (const std::exception& error) {
+    std::println(stderr, "Error: {}", error.what());
     return EXIT_FAILURE;
 }
 

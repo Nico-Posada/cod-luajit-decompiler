@@ -4769,9 +4769,9 @@ Ast::Expression* Ast::new_cdata(const Function& function, const uint16_t& index)
 
 void Ast::initialize_hash(Constant* const constant, const uint64_t hash, const Bytecode::XHashType hashType) {
     constant->type = AST_CONSTANT_HASH;
-    constant->hash = hash;
+    constant->hash = hashResolver.mask(hash);
     constant->hashType = hashType;
-    constant->resolvedHash = hashResolver.resolve(hash);
+    constant->resolvedHash = hashResolver.resolve(constant->hash);
     constant->isName = constant->resolvedHash && hashType == Bytecode::XHASH_LUA;
 }
 

@@ -37,6 +37,16 @@ the input-relative directory tree. For a file input, output defaults to
 `<input-file-parent>/output`. A relative `-o`/`--output` path is resolved from
 the current working directory, and missing output directories are created.
 
+`-b`/`--bit-length BIT_LENGTH` sets the package-index hash width used for both
+emitted hashes and WNI lookups. The accepted range is `0..64`, and the default
+is `64`. The option only applies when a `PackageIndex` directory exists beside
+the executable; without that directory, it is ignored.
+
+If `PackageIndex/.bit_length` exists, its decimal-text bit count overrides the
+CLI option. Surrounding ASCII whitespace is allowed. Package indexes without
+this metadata file remain supported, and use the CLI value or the `64` default.
+A malformed, unreadable, or out-of-range metadata value is fatal.
+
 Errors are written to standard error. Batch runs continue after per-file
 failures, always print a final summary, and exit unsuccessfully if any file
 fails. Existing output files are left untouched unless `-f`/`--force_overwrite`

@@ -4,8 +4,10 @@
 
 #include <algorithm>
 #include <bit>
+#include <charconv>
 #include <fstream>
 #include <limits>
+#include <iterator>
 #include <print>
 #include <stdexcept>
 #include <utility>
@@ -15,6 +17,33 @@ namespace {
 constexpr uint32_t WNI_MAGIC = 0x20494E57;
 constexpr int16_t WNI_VERSION = 1;
 constexpr std::size_t WNI_MIN_RECORD_SIZE = sizeof(uint64_t) + 1;
+
+int read_bit_length(const std::filesystem::path& path) {
+    std::ifstream stream(path);
+    if (!stream)
+        throw std::runtime_error("Failed to read bit length file: " + path.string());
+
+    std::string text;
+    try {
+        text.assign(std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{});
+    } catch (const std::exception&) {
+        throw std::runtime_error("Failed to read bit length file: " + path.string());
+    }
+    if (stream.bad())
+        throw std::runtime_error("Failed to read bit length file: " + path.string());
+
+    const std::size_t begin = std::min(text.find_first_not_of(" \t\n\r\f\v"), text.size());
+    const std::size_t end =
+        begin == text.size() ? begin : text.find_last_not_of(" \t\n\r\f\v") + 1;
+
+    int bitLength = 0;
+    const auto [parsedEnd, error] = std::from_chars(text.data() + begin, text.data() + end, bitLength);
+    if (begin == end || error != std::errc{} || parsedEnd != text.data() + end || bitLength < 0 || bitLength > 64)
+        throw std::runtime_error(
+            "Invalid bit length in " + path.string() + ": expected a decimal integer from 0 to 64"
+        );
+    return bitLength;
+}
 
 uint64_t read_little_endian(
     const std::vector<char>& data, std::size_t& offset, const std::size_t width, const char* field
@@ -115,9 +144,21 @@ std::vector<std::pair<uint64_t, std::string>> parse_file(const std::filesystem::
 }
 } // namespace
 
-HashResolver::HashResolver(const std::filesystem::path& packageIndexDirectory) {
+HashResolver::HashResolver(const std::filesystem::path& packageIndexDirectory, const int requestedBitLength) {
     if (!std::filesystem::exists(packageIndexDirectory))
         return;
+
+    const std::filesystem::path bitLengthPath = packageIndexDirectory / ".bit_length";
+    int bitLength = requestedBitLength;
+    if (std::filesystem::exists(bitLengthPath)) {
+        bitLength = read_bit_length(bitLengthPath);
+    } else if (bitLength < 0 || bitLength > 64) {
+        throw std::runtime_error(
+            "Invalid --bit-length value: expected 0-64, got " + std::to_string(bitLength)
+        );
+    }
+
+    hashMask = bitLength == 64 ? ~uint64_t{0} : (uint64_t{1} << bitLength) - 1;
 
     std::vector<std::filesystem::path> packageFiles;
     for (const std::filesystem::directory_entry& entry :
@@ -133,7 +174,7 @@ HashResolver::HashResolver(const std::filesystem::path& packageIndexDirectory) {
             std::vector<std::pair<uint64_t, std::string>> records = parse_file(packageFile);
             entries.reserve(entries.size() + records.size());
             for (auto& [hash, value] : records)
-                entries.insert_or_assign(hash, std::move(value));
+                entries.insert_or_assign(mask(hash), std::move(value));
         } catch (const std::exception& error) {
             std::println(
                 stderr, "Error loading package file {}: {}", packageFile.filename().string(), error.what()
@@ -143,6 +184,6 @@ HashResolver::HashResolver(const std::filesystem::path& packageIndexDirectory) {
 }
 
 const std::string* HashResolver::resolve(const uint64_t hash) const noexcept {
-    const auto entry = entries.find(hash);
+    const auto entry = entries.find(mask(hash));
     return entry == entries.end() ? nullptr : &entry->second;
 }
