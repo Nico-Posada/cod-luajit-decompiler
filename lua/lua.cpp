@@ -398,13 +398,9 @@ void Lua::write_expression(const Ast::Expression& expression, const bool& usePar
                         break;
 
                     if (expression.constant->resolvedHash) {
-                        if (expression.constant->hashType == Bytecode::XHASH_LUA) {
-                            write("@", *expression.constant->resolvedHash);
-                        } else {
-                            write(hashPrefix, "\"");
-                            write_string(*expression.constant->resolvedHash);
-                            write("\"");
-                        }
+                        write(hashPrefix, "\"");
+                        write_string(*expression.constant->resolvedHash);
+                        write("\"");
                         break;
                     }
 
